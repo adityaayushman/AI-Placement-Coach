@@ -98,7 +98,7 @@ def _metrics(y: np.ndarray, p: np.ndarray) -> dict[str, float]:
     }
 
 
-def _calibration_table(y: np.ndarray, p: np.ndarray, bins: int = 5) -> list[dict[str, float]]:
+def _calibration_table(y: np.ndarray, p: np.ndarray, bins: int = 5) -> list[dict[str, Any]]:
     edges = np.linspace(0, 1, bins + 1)
     rows = []
     for lo, hi in zip(edges[:-1], edges[1:], strict=True):
@@ -211,7 +211,7 @@ def _dir() -> Path:
 
 
 def save(artifact: dict[str, Any]) -> str:
-    version = artifact["report"]["version"]
+    version = str(artifact["report"]["version"])
     joblib.dump(artifact, _dir() / f"{version}.joblib")
     (_dir() / f"{version}.json").write_text(json.dumps(artifact["report"], indent=2))
     (_dir() / "active.txt").write_text(version)

@@ -415,12 +415,12 @@ def seed(db: Session) -> None:
                     title=f"{skill.title()} check", skill=skill, question_ids=[q.id for q in qs]
                 )
             )
-        for i, (cat, skill, prompt, kps, ref) in enumerate(INTERVIEW):
+        for i, (cat, iskill, prompt, kps, ref) in enumerate(INTERVIEW):
             db.add(
                 QuestionBank(
                     kind="interview",
                     category=cat,
-                    skill=skill or "",
+                    skill=iskill or "",
                     difficulty=1 + i % 2,
                     prompt=prompt,
                     key_points=kps,

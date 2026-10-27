@@ -21,7 +21,7 @@ def _tokens(user: User) -> TokenPair:
     return TokenPair(
         access_token=create_access_token(user.id, user.role),
         refresh_token=create_refresh_token(user.id, user.role),
-        role=user.role,  # type: ignore[arg-type]
+        role=user.role,
     )
 
 
