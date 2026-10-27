@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import type { Role } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorNote, Field } from "../components/ui";
 
 export default function AuthPage({ mode }: { mode: "login" | "register" }) {
-  const { login, register } = useAuth();
+  const { login, register, preview } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,6 +45,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
             Bring your marks, resume, practice and mock interviews together. You get one readiness
             score, the reasons behind it, and a short list of what to work on this week.
           </p>
+          <PreviewButtons onPick={async (r) => { await preview(r); navigate(r === "student" ? "/" : `/${r}`); }} />
         </section>
 
         <form onSubmit={submit} className="glass-strong mx-auto w-full max-w-md p-7 sm:p-9" noValidate>
@@ -78,8 +80,25 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
               <>Have an account? <Link className="text-amber underline-offset-4 hover:underline" to="/login">Sign in</Link></>
             )}
           </p>
+          <div className="mt-6 border-t border-line pt-5 lg:hidden">
+            <PreviewButtons onPick={async (r) => { await preview(r); navigate(r === "student" ? "/" : `/${r}`); }} />
+          </div>
         </form>
       </div>
     </main>
+  );
+}
+
+function PreviewButtons({ onPick }: { onPick: (role: Role) => void }) {
+  return (
+    <div className="mt-8">
+      <p className="eyebrow">No account needed</p>
+      <p className="mt-1 text-sm text-muted">Explore the app with sample data. Nothing is saved.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="btn-ghost" onClick={() => onPick("student")}>Preview as student</button>
+        <button type="button" className="btn-ghost" onClick={() => onPick("coordinator")}>As coordinator</button>
+        <button type="button" className="btn-ghost" onClick={() => onPick("admin")}>As admin</button>
+      </div>
+    </div>
   );
 }

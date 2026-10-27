@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { api, getTokens, onTokens, setTokens, type Tokens } from "../api/client";
+import { api, getTokens, onTokens, setTokens, type Role, type Tokens } from "../api/client";
+import { setPreview } from "../api/preview";
 import type { User } from "../api/types";
 
 interface AuthState {
@@ -10,6 +11,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
+  preview: (role: Role) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -36,7 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     await qc.invalidateQueries();
   };
+  const preview = async (role: Role) => {
+    setPreview(role);
+    setTokens({ access_token: "preview", refresh_token: "preview", role });
+    await qc.invalidateQueries();
+  };
   const logout = () => {
+    setPreview(null);
     setTokens(null);
     qc.clear();
   };
@@ -47,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    preview,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

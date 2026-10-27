@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 
+import { previewRole } from "../api/preview";
 import { useAuth } from "../auth/AuthContext";
 import Icon, { type IconName } from "./Icon";
 
@@ -54,6 +55,12 @@ export default function Shell() {
           <nav aria-label="Primary mobile" className="glass mb-6 flex gap-1 overflow-x-auto p-1.5 lg:hidden">
             {items.map((item) => <NavItem key={item.to} {...item} compact />)}
           </nav>
+          {previewRole() && (
+            <p role="note" className="mb-6 rounded-2xl border border-[rgba(226,176,98,0.45)] bg-[rgba(226,176,98,0.12)] px-4 py-3 text-sm text-ink">
+              <strong className="font-medium">Preview with sample data.</strong> The live API is not connected, so nothing you do here is saved.{" "}
+              <button type="button" onClick={logout} className="cursor-pointer text-amber underline-offset-4 hover:underline">Leave preview</button>
+            </p>
+          )}
           <main id="main" className="pb-16">
             <Outlet />
           </main>

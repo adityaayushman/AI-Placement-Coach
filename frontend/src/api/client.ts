@@ -1,3 +1,5 @@
+import { previewApi, previewRole } from "./preview";
+
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
 const BASE = `${API_URL}/api/v1`;
 const STORE_KEY = "pc.tokens";
@@ -74,6 +76,10 @@ interface Options {
 }
 
 export async function api<T>(path: string, opts: Options = {}, retried = false): Promise<T> {
+  if (previewRole()) {
+    if (opts.raw) throw new ApiError(400, "Downloads need the live API. They are not available in preview.");
+    return (await previewApi(path, opts)) as T;
+  }
   const headers: Record<string, string> = {};
   if (tokens) headers.Authorization = `Bearer ${tokens.access_token}`;
   if (opts.json !== undefined) headers["Content-Type"] = "application/json";
