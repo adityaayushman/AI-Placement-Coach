@@ -2,7 +2,7 @@
 
 AI-driven platform that evaluates an engineering student's placement readiness and gives personalised, continuously updated guidance. Full spec: [placement plan](placement%20plan). Working agreements: [CLAUDE.md](CLAUDE.md). Decisions and deviations: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-**Live frontend:** https://ai-placement-coach.vercel.app (the backend is not deployed yet, so the site cannot sign in until Render is set up: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+**Live frontend:** https://ai-placement-coach-murex.vercel.app . The backend is not deployed yet, so sign-in does not work there until Render is set up ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Use the **Preview as student / coordinator / admin** buttons to explore every screen with clearly labelled sample data.
 
 ## What it does
 

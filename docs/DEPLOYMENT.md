@@ -8,7 +8,7 @@ Set `VITE_API_URL` (Production) to the Render API URL, then redeploy.
 ## Backend: Render
 
 1. In Render choose **New → Blueprint** and pick this repo. `render.yaml` creates the API, Postgres 16 and Key Value (Redis).
-2. Set `CORS_ORIGINS` to the Vercel URL (`https://ai-placement-coach.vercel.app`), and `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the first admin.
+2. Set `CORS_ORIGINS` to the Vercel URL (`https://ai-placement-coach-murex.vercel.app`), and `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the first admin.
 3. The image trains the bootstrap readiness model on synthetic data at build time. The API creates tables and seed data at startup.
 4. `JOBS_INLINE=true` runs rescoring in the API process, so no paid worker is needed. To use the RQ worker, add a worker service running `python -m app.workers.run` and set `JOBS_INLINE=false`.
 
