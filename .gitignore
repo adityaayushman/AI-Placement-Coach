@@ -21,3 +21,4 @@ data/processed/*
 .vercel
 models/
 storage/
+models-eval/
