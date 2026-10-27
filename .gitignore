@@ -22,3 +22,4 @@ data/processed/*
 models/
 storage/
 models-eval/
+*.tsbuildinfo
