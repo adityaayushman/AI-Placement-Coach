@@ -19,3 +19,5 @@ data/processed/*
 .vercel/
 
 .vercel
+models/
+storage/
