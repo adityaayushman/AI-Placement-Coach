@@ -1,0 +1,41 @@
+# Render Blueprint for the backend. The frontend is deployed on Vercel (frontend/vercel.json).
+# Nothing here is applied until the repo is connected in Render.
+services:
+  - type: web
+    name: placement-coach-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false # set to the Vercel URL(s), comma-separated
+      - key: DATABASE_URL
+        fromDatabase: {name: placement-coach-db, property: connectionString}
+      - key: REDIS_URL
+        fromService: {type: keyvalue, name: placement-coach-redis, property: connectionString}
+  - type: worker
+    name: placement-coach-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python -m app.workers.run
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: {name: placement-coach-db, property: connectionString}
+      - key: REDIS_URL
+        fromService: {type: keyvalue, name: placement-coach-redis, property: connectionString}
+  - type: keyvalue
+    name: placement-coach-redis
+    ipAllowList: []
+    plan: free
+databases:
+  - name: placement-coach-db
+    plan: free
+    postgresMajorVersion: "16"

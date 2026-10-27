@@ -1,0 +1,210 @@
+# AI Placement Coach: Full Implementation Prompt (for Claude Code)
+
+## 0. Role and goal
+
+You are the lead engineer building **AI Placement Coach**, an AI-driven web platform that evaluates an engineering student's complete placement readiness and gives personalized, continuously updated guidance.
+
+The platform combines four modules into one pipeline and a shared dashboard:
+
+1. **Placement Readiness Predictor**: ensemble ML on academics, coding, projects and practice data.
+2. **Resume & Skill-Gap Analyzer**: transformer-embedding NLP, ATS checks, skill-gap detection against target job descriptions.
+3. **AI Mock Interview Engine**: speech and answer-content scoring (facial analysis is optional or stretch).
+4. **Personalized Recommendation Engine**: knowledge tracing that recommends the next topic or resource.
+
+Outputs: a single **Placement Readiness Score**, a student dashboard, and a coordinator dashboard. A continuous-improvement loop re-scores and re-recommends whenever new data arrives.
+
+Seven-step pipeline to implement: Data Collection → Preprocessing → Resume Analysis → Skill Assessment → AI Recommendation → Progress Monitoring → Continuous Improvement.
+
+## 1. Working agreements (follow strictly)
+
+- Work in **phases** (section 8). Finish one phase, run all tests, commit, then **stop and summarize** (what was built, how to run it, what is next, open questions). Wait for my "continue".
+- Before each phase, write a short plan (files to create or change, risks). Ask me only about real blockers; otherwise choose sensible defaults and note them in `docs/DECISIONS.md`.
+- Small commits with Conventional Commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+- Tests first or alongside. Never mark a task done with failing tests, lint errors or type errors.
+- **Do not fabricate** data, metrics, benchmarks or citations. Any synthetic or proxy data must be labeled as such in code, docs and UI. Report real measured results only.
+- No secrets in git. Provide `.env.example`. Use environment variables for all config.
+- Type hints everywhere (Python), TypeScript strict mode (frontend). Keep functions small and documented only where non-obvious.
+- Keep `README.md` current: setup, run, test, architecture diagram, phase status.
+
+## 2. Tech stack (defaults; deviations go in DECISIONS.md)
+
+| Layer | Choice |
+|---|---|
+| Backend API | Python 3.11, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic |
+| Database | PostgreSQL 16 (use JSONB for flexible artifacts) |
+| Files | Local disk behind a storage interface (swap to S3/MinIO later) |
+| Jobs | Redis + RQ for heavy tasks (resume parse, audio analysis, retraining) |
+| ML / NLP | scikit-learn, XGBoost/LightGBM, sentence-transformers (BERT-family embeddings), spaCy, pdfplumber, python-docx, SHAP |
+| Speech | OpenAI Whisper (local `faster-whisper`) for STT, librosa for prosody features |
+| Knowledge tracing | MVP: Bayesian Knowledge Tracing; stretch: PyTorch LSTM-based DKT |
+| Frontend | React + TypeScript (Vite), Tailwind, React Query, Recharts, React Router |
+| Auth | JWT (access + refresh), roles: `student`, `coordinator`, `admin` |
+| Quality | pytest, ruff, mypy, pre-commit; Vitest + Playwright for frontend |
+| Infra | Docker Compose (api, worker, db, redis, web); GitHub Actions CI |
+
+Note: the poster lists PostgreSQL/MongoDB. Default to PostgreSQL + JSONB only. Add MongoDB only if a concrete need appears.
+
+## 3. Repository layout
+
+```
+ai-placement-coach/
+  CLAUDE.md                 # copy of sections 1-2 for persistent context
+  README.md
+  docker-compose.yml
+  .env.example
+  docs/
+    DECISIONS.md  ARCHITECTURE.md  DATA_PLAN.md  EVALUATION.md  API.md
+  backend/
+    app/
+      main.py  config.py  deps.py
+      core/        # security, logging, errors
+      db/          # models, session, migrations (alembic)
+      schemas/     # pydantic
+      api/v1/      # routers: auth, students, resumes, jobs, assessments,
+                   #          interviews, readiness, recommendations,
+                   #          coordinator, consent, admin
+      services/    # business logic per module
+      ml/
+        resume/        # parsing, skill extraction, embeddings, ATS rules
+        readiness/     # features, training, inference, explain
+        interview/     # question bank, stt, speech features, scoring
+        knowledge/     # BKT, DKT, recommender
+        registry.py    # model versioning and loading
+      workers/     # RQ tasks
+    tests/
+    notebooks/     # EDA and training experiments (not imported by app)
+  frontend/
+    src/ (pages, components, api, hooks, charts, auth)
+  data/
+    raw/ processed/ synthetic/   # gitignored except synthetic generators + README
+  scripts/         # seed, train, evaluate, export
+```
+
+## 4. Data plan (implement collection + governance)
+
+Six data streams (each maps to a table or JSONB column and a consent scope):
+
+| Stream | Source | Format | Method | Feeds |
+|---|---|---|---|---|
+| Academic records | Student entry or CSV import (institutional export later) | Structured | Form + CSV upload | Readiness Predictor |
+| Resumes & certificates | Student upload | PDF/DOCX | Upload with consent checkbox | Resume Analyzer |
+| Coding & project activity | Manual entry / CSV; optional public profile APIs where ToS allow | Structured | Form + import | Readiness Predictor |
+| Target job descriptions | Manual paste or curated library | Text | Admin/coordinator CRUD | Resume Analyzer |
+| Mock interview sessions | In-platform | Audio/text (video optional) | Recorded with consent | Interview Engine |
+| Interaction & progress logs | In-platform events | Structured, timestamped | Automatic event logging | Recommendation Engine |
+
+**Governance (must-have, not optional):**
+- Consent records per scope (resume, interview recording, analytics, coordinator visibility) with timestamp and version; revoke anytime.
+- Pseudonymize PII before any model training or export (separate `identity` table from `features`).
+- Student endpoints: view, export (JSON/CSV), delete all my data (hard delete + file purge).
+- Coordinators see **cohort aggregates by default**; individual views only with student consent.
+- Audit log for sensitive reads and admin actions.
+
+**Development data (proxy, clearly labeled):** until real pilot data exists, use public datasets and synthetic generators. Candidates to verify (check license before use): Kaggle campus placement datasets, public resume datasets, public job-description datasets, ASSISTments (knowledge tracing validation), RAVDESS/FER-style sets for speech/face experiments. Put provenance and license in `docs/DATA_PLAN.md`. Pilot target: roughly 200-300 students across 2-3 departments.
+
+## 5. Core data model (Alembic migrations)
+
+`users`, `student_profiles`, `consents`, `academic_records`, `coding_activities`, `projects`, `certifications`, `resumes` (file, parsed_text, sections JSONB, version), `resume_analyses` (ats_score, match_scores JSONB, skill_gaps JSONB, jd_id), `job_descriptions` (company, role, type: product|service, required_skills JSONB), `companies`, `skills` (taxonomy, parent/prereq edges), `skill_mastery` (student, skill, p_known, updated_at), `assessments`, `assessment_attempts`, `question_bank`, `interview_sessions`, `interview_answers` (transcript, audio_path, scores JSONB), `readiness_scores` (time series: score, components JSONB, model_version, shap JSONB), `recommendations` (item, reason, status), `learning_resources`, `events` (append-only interaction log), `audit_log`, `model_versions`.
+
+## 6. Module specifications
+
+### 6.1 Resume & Skill-Gap Analyzer
+- Parse PDF/DOCX → clean text → section detection (education, experience, projects, skills, certifications).
+- Skill extraction: curated skills taxonomy + spaCy matcher + embedding fallback for near-matches.
+- **Semantic match**: sentence-transformer embeddings of resume sections vs job description; cosine similarity per section and overall.
+- **Skill gap** = JD required skills not covered (exact or semantic), ranked by importance weight.
+- **ATS checks** (rule-based, explainable): standard section headings, parseable text, contact info present, length, bullet and metric usage, keyword coverage. Output 0-100 plus a fix-it list with reasons.
+- Output must explain *why* each score moved. No black-box single number.
+- Evaluation: build a small labeled set (manually annotated resume-JD pairs) and report precision/recall of skill-gap detection and rank correlation with human judgment.
+
+### 6.2 Placement Readiness Predictor
+- Features: CGPA, backlogs, 10th/12th %, internships, project count/complexity, certifications, coding stats, quiz scores, resume score, mock-interview averages, target company type.
+- Models: Logistic Regression (baseline), Random Forest, XGBoost/LightGBM; pick by cross-validated results, then **calibrate probabilities**.
+- Stratified k-fold CV; hold-out test set; guard against leakage (no features that are consequences of placement).
+- Report accuracy, F1, ROC-AUC, calibration curve. Include an **ablation: academics-only vs full feature set** (literature suggests academic-only is much weaker; verify on our data).
+- Explainability: SHAP per prediction, show top positive/negative drivers in the UI.
+- Fairness check across department and gender where data allows; document in `docs/EVALUATION.md`.
+- Serve via `registry.py` with versioned artifacts; retrain script; every score stores `model_version`.
+
+### 6.3 AI Mock Interview Engine
+- Question bank by role, company type, difficulty (HR, behavioral, technical-conceptual, DSA verbal explanation).
+- Session flow: pick role → ask question → capture answer (text or audio) → score → feedback → next.
+- STT with faster-whisper. Speech features with librosa: speaking rate (WPM), pause ratio, filler-word rate, pitch variability.
+- **Content score**: embedding similarity to rubric/reference key points plus keyword/concept coverage; optional LLM-as-judge behind a feature flag (document cost and determinism limits).
+- Output sub-scores: **confidence/delivery**, **communication**, **content correctness**, with specific, actionable feedback.
+- Facial analysis (MediaPipe/FER, in-browser or server) is **stretch**, off by default, consent-gated, and must be labeled as indicative only.
+- Evaluation: compare automated scores with human-rated samples (target correlation reported honestly, e.g. Pearson r).
+
+### 6.4 Personalized Recommendation Engine
+- Skill graph with prerequisites and per-company skill weights (product-based: DSA, system design, projects; service-based: aptitude, communication, fundamentals).
+- Mastery tracking per skill: MVP **Bayesian Knowledge Tracing** updated from quiz/coding/interview events; stretch **DKT (LSTM)** trained and validated on ASSISTments, then adapted.
+- Recommendation = rank of `gap_size × skill_weight × prerequisite_readiness`, with diversity and a "why this" reason string; resources from `learning_resources`.
+- Closed loop: accepting/ignoring/completing a recommendation is logged and feeds back into mastery and ranking.
+
+### 6.5 Readiness Score Aggregator
+- Composite 0-100: weighted blend of predictor probability, resume score, skill mastery, interview score, consistency (activity). Weights configurable per company type and stored with each score for auditability.
+- Score history, trend, and "what changed since last time" diff.
+
+## 7. Product surfaces
+
+**Student app:** onboarding + consent, profile builder, resume upload and report, target company/role selector, assessments and coding log, mock interview room, readiness dashboard (score, trend, skill radar, top gaps, SHAP drivers), personalized plan with weekly tasks, data export/delete page.
+
+**Coordinator app:** cohort overview (score distribution, department heatmap), at-risk list (consented only), skill-gap aggregates, drive-readiness filters per company, CSV export, announcement/notifications.
+
+**Admin:** job description library, question bank, skills taxonomy, learning resources, model versions, audit log.
+
+Accessibility and UX: responsive, keyboard accessible, clear loading/error states, no dark patterns around consent.
+
+## 8. Phased delivery (stop after each phase)
+
+**Phase 0: Foundations.** Repo scaffold, Docker Compose, CI (lint, types, tests), `CLAUDE.md`, `.env.example`, health endpoint, frontend shell.
+*Done when:* `docker compose up` runs api/web/db/redis; CI green.
+
+**Phase 1: Auth, data model, consent.** Migrations, JWT auth with roles, profile CRUD, consent management, data export/delete, audit log.
+*Done when:* role-based access tests pass; consent revoke removes dependent data access.
+
+**Phase 2: Resume pipeline.** Upload, parsing, skill extraction, ATS rules, JD library, semantic match, gap report UI.
+*Done when:* sample resumes produce stable, explainable reports; evaluation script reports metrics on the labeled set.
+
+**Phase 3: Assessments and activity.** Quiz engine, coding log (manual/CSV), project/certification entry, event logging.
+*Done when:* attempts persist and emit `events` used downstream.
+
+**Phase 4: Readiness predictor.** Dataset prep, training pipeline, CV + ablation, calibration, SHAP, model registry, inference API, UI card.
+*Done when:* `docs/EVALUATION.md` has real measured metrics and the ablation; predictions carry `model_version`.
+
+**Phase 5: Mock interview.** Question bank, session flow, STT, speech features, content scoring, feedback UI. Facial analysis only if time permits.
+*Done when:* an end-to-end session yields sub-scores and feedback; human-rating comparison script exists.
+
+**Phase 6: Recommendation engine.** Skill graph, BKT mastery, ranking, reasons, feedback loop; DKT experiment as stretch.
+*Done when:* recommendations change measurably after new attempts; offline replay test passes.
+
+**Phase 7: Aggregator and dashboards.** Composite score, history, student dashboard, coordinator dashboard with consent-aware views.
+*Done when:* new data triggers rescoring via worker and the UI reflects it.
+
+**Phase 8: Evaluation and pilot harness.** Metrics suite, synthetic cohort generator (labeled synthetic), pilot onboarding flow, reporting notebook.
+*Done when:* one command regenerates all evaluation tables/figures into `docs/EVALUATION.md`.
+
+**Phase 9: Hardening and release.** Rate limiting, input validation, file-type/size limits and malware-safe handling, backups, load smoke test, security review checklist, deployment docs, demo seed data.
+*Done when:* CI green, threat-model checklist complete, one-command demo works.
+
+## 9. Targets (benchmarks from the literature, not guarantees)
+
+Use as reference lines in `EVALUATION.md`; report whatever our data actually achieves:
+- Readiness prediction accuracy in the high-70s to mid-80s % range on comparable data.
+- Resume-to-role match accuracy near 79% in the cited transformer work.
+- Mock-interview automated vs human rating correlation r ≥ 0.75 in cited work.
+- Knowledge-tracing AUC around 0.86 on ASSISTments in the original DKT paper.
+
+If our results fall short, say so, and document why (data size, label noise, features).
+
+## 10. Non-functional requirements
+
+- p95 API latency under 500 ms for non-ML endpoints; ML jobs async with status polling.
+- Reproducible training: fixed seeds, pinned dependencies, data version hashes.
+- Observability: structured logs, request IDs, basic metrics endpoint.
+- Test coverage target: 80% backend services, key flows covered by e2e.
+- Security: OWASP basics, password hashing (argon2/bcrypt), CORS allowlist, secrets via env, upload scanning/limits, PII never logged.
+
+## 11. First instruction
+
+Read this whole document. Create `CLAUDE.md` from sections 1-2, create `docs/DECISIONS.md`, then execute **Phase 0 only**. When finished, summarize and wait for "continue".
