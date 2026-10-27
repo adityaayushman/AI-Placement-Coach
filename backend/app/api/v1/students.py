@@ -22,6 +22,7 @@ from app.schemas.common import (
     ProjectIn,
     ProjectOut,
 )
+from app.services import academics
 from app.services.governance import log_event
 from app.services.rescoring import request_rescore
 
@@ -126,6 +127,20 @@ async def import_coding(file: UploadFile, user: Student, db: DB) -> list[Any]:
     db.commit()
     request_rescore(user.id)
     return rows
+
+
+@router.post("/academics/import", response_model=list[AcademicOut], status_code=201)
+async def import_academics(file: UploadFile, user: Student, db: DB) -> list[Any]:
+    """CSV with header: term,gpa[,backlogs]. Updates CGPA and backlogs on the profile."""
+    rows = await academics.read_csv(file)
+    items = [academics.parse_row(r, i) for i, r in enumerate(rows[:100], start=2)]
+    if not items:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "CSV has no rows")
+    created = academics.apply(db, user.id, items)
+    log_event(db, user.id, "academics_imported", rows=len(created))
+    db.commit()
+    request_rescore(user.id)
+    return created
 
 
 @router.delete("/coding/{row_id}", status_code=204)

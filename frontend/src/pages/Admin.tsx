@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api } from "../api/client";
 import type { Job } from "../api/types";
+import CsvImport from "../components/CsvImport";
 import { ErrorNote, Field, Loading, PageHeader, Panel } from "../components/ui";
 
 interface AuditRow { id: number; actor_id: number | null; action: string; target: string; created_at: string }
@@ -91,6 +92,14 @@ export default function Admin() {
           </ul>
         </Panel>
 
+        <Panel title="Institutional academic import" eyebrow="ERP or LMS export">
+          <CsvImport path="/admin/academics/import" columns="email,term,gpa,backlogs" invalidate={[["audit"]]}
+            describe={(r) => {
+              const res = r as { students_updated: number; unknown_emails: string[] };
+              return `Updated ${res.students_updated} students.` +
+                (res.unknown_emails.length ? ` Not registered yet: ${res.unknown_emails.join(", ")}.` : "");
+            }} />
+        </Panel>
         <Panel title="Audit log">
           {audit.isPending ? <Loading /> : (
             <ul className="max-h-[420px] space-y-1 overflow-y-auto text-sm">

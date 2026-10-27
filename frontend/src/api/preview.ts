@@ -32,6 +32,7 @@ const state = {
   consents: {
     resume: true,
     interview_recording: false,
+    face_analysis: false,
     analytics: true,
     coordinator_visibility: false,
   } as Record<string, boolean>,
@@ -136,6 +137,7 @@ const students = [
 const SCOPE_TEXT: Record<string, string> = {
   resume: "Store and analyse my resume.",
   interview_recording: "Record and analyse my mock-interview audio.",
+  face_analysis: "Read face position and eye contact from my camera during mock interviews. Video stays in my browser; only summary numbers are sent.",
   analytics: "Log my in-app activity to personalise recommendations.",
   coordinator_visibility: "Let placement coordinators see my individual results.",
 };
@@ -178,6 +180,8 @@ export async function previewApi(path: string, opts: Opts): Promise<unknown> {
     target_role: "Software Engineer", cgpa: 7.4, backlogs: 1, tenth_pct: 88, twelfth_pct: 82, internships: 1,
     ...(method === "PUT" ? (opts.json as object) : {}),
   };
+  if (route === "/me/academics/import") return [{ id: 1, term: "Sem 1", gpa: 7.2, backlogs: 1 }, { id: 2, term: "Sem 2", gpa: 7.6, backlogs: 0 }];
+  if (route === "/admin/academics/import") return { students_updated: 2, unknown_emails: ["not.registered@example.com"] };
   if (route === "/me/coding") return method === "POST" ? { id: 99, ...(opts.json as object) } : [{ id: 1, platform: "LeetCode", problems_solved: 240, contest_rating: 1610, created_at: iso(3) }];
   if (route === "/me/projects") return method === "POST" ? { id: 99, ...(opts.json as object) } : [{ id: 1, title: "Campus marketplace", complexity: 2 }, { id: 2, title: "Route planner", complexity: 3 }];
   if (route === "/me/certifications") return method === "POST" ? { id: 99, ...(opts.json as object) } : [{ id: 1, name: "AWS Cloud Practitioner", issuer: "AWS" }];
@@ -208,7 +212,7 @@ export async function previewApi(path: string, opts: Opts): Promise<unknown> {
     const comm = Math.min(95, 40 + words);
     return {
       id: Math.round(Math.random() * 1e6), question_id: Number(opts.form?.get("question_id")), transcript: "",
-      scores: { content: 58, communication: comm, delivery: 80, overall: Math.round(0.5 * 58 + 0.3 * comm + 0.2 * 80), details: {} },
+      scores: { content: 58, communication: comm, delivery: null, confidence: 90, overall: Math.round((0.45 * 58 + 0.25 * comm + 0.15 * 90) / 0.85), details: {} },
       feedback: [
         "Preview feedback: the real API scores your words against the question's key points.",
         words < 40 ? `Your answer was ${words} words; aim for 80-200 with an example.` : "Good length. Add one concrete example with a result.",

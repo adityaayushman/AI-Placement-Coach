@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { api } from "../api/client";
 import type { Profile as ProfileT } from "../api/types";
+import CsvImport from "../components/CsvImport";
 import Icon from "../components/Icon";
 import { ErrorNote, Field, Loading, PageHeader, Panel } from "../components/ui";
 
@@ -85,6 +86,11 @@ export default function Profile() {
           </form>
         </Panel>
 
+        <Panel title="Semester results" eyebrow="Import from your marksheet">
+          <CsvImport path="/me/academics/import" columns="term,gpa,backlogs"
+            invalidate={[["profile"], ["readiness"]]}
+            describe={(r) => `Imported ${(r as unknown[]).length} terms. CGPA and backlogs are updated.`} />
+        </Panel>
         <EntryList title="Coding practice" path="/me/coding"
           fields={[{ key: "platform", label: "Platform", placeholder: "LeetCode" }, { key: "problems_solved", label: "Problems solved", type: "number" }, { key: "contest_rating", label: "Rating", type: "number" }]}
           render={(r) => `${r.platform}: ${r.problems_solved} solved${r.contest_rating ? `, rating ${r.contest_rating}` : ""}`} />

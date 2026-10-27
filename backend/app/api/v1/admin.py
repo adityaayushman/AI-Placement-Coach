@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -8,7 +8,9 @@ from app.core.security import hash_password
 from app.db.models import AuditLog, LearningResource, ModelVersion, QuestionBank, User
 from app.deps import DB, Admin, Staff
 from app.schemas.common import ORM, StaffCreateIn, UserOut
+from app.services import academics
 from app.services.governance import audit
+from app.services.rescoring import request_rescore
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -108,3 +110,23 @@ def add_resource(body: ResourceIn, actor: Admin, db: DB) -> dict[str, int]:
     audit(db, actor.id, "add_resource", f"resource:{r.id}")
     db.commit()
     return {"id": r.id}
+
+
+@router.post("/academics/import")
+async def import_institutional_academics(
+    file: UploadFile, actor: Staff, db: DB
+) -> dict[str, object]:
+    """Institutional export (CSV: email,term,gpa[,backlogs]) for students already registered."""
+    updated, unknown = academics.import_institutional(db, await academics.read_csv(file))
+    audit(
+        db,
+        actor.id,
+        "academics_bulk_import",
+        "students",
+        updated=len(updated),
+        unknown=len(unknown),
+    )
+    db.commit()
+    for uid in updated:
+        request_rescore(uid)
+    return {"students_updated": len(updated), "unknown_emails": unknown}
