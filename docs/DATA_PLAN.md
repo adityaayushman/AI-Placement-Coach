@@ -2,11 +2,11 @@
 
 | Stream | Table(s) | Consent scope | Status |
 |---|---|---|---|
-| Academic records | `student_profiles`, `academic_records` | core service | Form entry |
+| Academic records | `student_profiles`, `academic_records` | core service | Form entry, student CSV import, staff import of an institutional ERP/LMS export |
 | Resumes and certificates | `resumes`, `resume_analyses`, `certifications` | `resume` | Upload PDF/DOCX/TXT up to 5 MB, magic-byte checked |
 | Coding and project activity | `coding_activities`, `projects` | core service | Form and CSV import |
 | Target job descriptions | `job_descriptions` | n/a | Staff CRUD; seeded with 3 **illustrative samples** (generic names, not real postings) |
-| Mock interview sessions | `interview_sessions`, `interview_answers` | `interview_recording` (audio only) | Text always allowed; audio stored only with consent |
+| Mock interview sessions | `interview_sessions`, `interview_answers` | `interview_recording` (audio), `face_analysis` (camera) | Text always allowed; audio stored only with consent; video never leaves the browser, only five summary numbers are stored |
 | Interaction logs | `events` (append-only) | `analytics` | Not written without consent |
 
 Coordinator individual access requires `coordinator_visibility`. Consents are append-only rows with version `2026-10`; the latest row per scope wins.

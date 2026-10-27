@@ -9,9 +9,9 @@ AI-driven platform that evaluates an engineering student's placement readiness a
 | Module | Implementation |
 |---|---|
 | Readiness predictor | Logistic regression, random forest and gradient boosting compared by 5-fold stratified CV, best model Platt-calibrated, versioned registry, per-prediction attributions |
-| Resume and skill-gap analyser | PDF/DOCX/TXT parsing, section detection, taxonomy skill extraction with fuzzy fallback, explainable ATS rules with fixes, JD text match, gaps ranked by role and company-type weight |
-| Mock interview | HR, behavioural, technical and DSA questions; text or recorded answers; prosody from WAV (pace, pauses, pitch variation); content, communication and delivery sub-scores with specific feedback |
-| Recommendations | Bayesian Knowledge Tracing per skill; ranking by gap × weight × prerequisite readiness with diversity and a reason string; accept / complete / skip feeds back |
+| Resume and skill-gap analyser | PDF/DOCX/TXT parsing, section detection, taxonomy skill extraction with fuzzy fallback, explainable ATS rules with fixes, JD match with TF-IDF or a BERT-family sentence-transformer (MiniLM, opt-in), gaps ranked by role and company-type weight |
+| Mock interview | HR, behavioural, technical and DSA questions; text or recorded answers; prosody from WAV (pace, pauses, pitch variation); in-browser camera signals (framing, eye contact) with separate consent; content, communication, delivery and confidence sub-scores with specific feedback |
+| Recommendations | Bayesian Knowledge Tracing per skill (an LSTM deep-knowledge-tracing model is implemented and evaluated, opt-in); ranking by gap × weight × prerequisite readiness with diversity and a reason string; accept / complete / skip feeds back |
 | Readiness score | Weighted blend of the five components, weights stored with each score, history and change since last time; new data triggers a rescore |
 | Governance | Per-scope consent with revocation, data export (JSON/CSV) and hard delete, audit log, coordinator aggregates with small-group suppression |
 
@@ -67,13 +67,13 @@ CI (`.github/workflows/ci.yml`) runs the lint, type and test commands.
 |---|---|---|
 | 0 | Foundations | Done |
 | 1 | Auth, data model, consent | Done |
-| 2 | Resume pipeline | Done (TF-IDF matching; sentence-transformers optional) |
+| 2 | Resume pipeline | Done (TF-IDF default; BERT MiniLM opt-in, evaluated) |
 | 3 | Assessments and activity | Done |
 | 4 | Readiness predictor | Done on synthetic data; SHAP replaced by occlusion attribution |
-| 5 | Mock interview | Done; server STT optional; facial analysis not built |
-| 6 | Recommendation engine | Done (BKT); DKT not built |
+| 5 | Mock interview | Done, including in-browser facial signals; server STT optional |
+| 6 | Recommendation engine | Done (BKT served; DKT implemented, did not beat fitted BKT on synthetic data) |
 | 7 | Aggregator and dashboards | Done |
-| 8 | Evaluation and pilot harness | Done; human-rated interview and resume sets do not exist yet |
+| 8 | Evaluation and pilot harness | Done, including the skill-gap tracking-gain simulation; human-rated interview and resume sets do not exist yet |
 | 9 | Hardening and release | Mostly done; malware scanning and a hashed lock file are open (see [docs/SECURITY.md](docs/SECURITY.md)) |
 
 Last verification (2026-10-27): GitHub Actions CI passing (ruff, mypy strict, 44 backend tests; frontend lint, typecheck, 4 tests, build). Docker Compose was not run locally (the Docker disk is on a full drive).
