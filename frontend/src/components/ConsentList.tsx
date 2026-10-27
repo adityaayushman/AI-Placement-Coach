@@ -7,6 +7,7 @@ import { ErrorNote, Loading } from "./ui";
 const TITLES: Record<string, string> = {
   resume: "Resume analysis",
   interview_recording: "Interview audio",
+  face_analysis: "Camera signals",
   analytics: "Activity history",
   coordinator_visibility: "Coordinator access",
 };

@@ -149,7 +149,8 @@ export interface InterviewAnswer {
   scores: {
     content: number;
     communication: number;
-    delivery: number;
+    delivery: number | null;
+    confidence: number;
     overall: number;
     details: Record<string, unknown>;
   };

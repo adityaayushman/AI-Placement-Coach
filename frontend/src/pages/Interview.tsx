@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { Consent, InterviewAnswer, InterviewSession } from "../api/types";
 import Icon from "../components/Icon";
 import { Empty, ErrorNote, Field, Meter, PageHeader, Panel } from "../components/ui";
+import { trackFace, type FaceSignals } from "../lib/face";
 import { toWav } from "../lib/wav";
 
 type Recognition = {
@@ -27,7 +28,9 @@ export default function Interview() {
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<Record<number, InterviewAnswer>>({});
   const consents = useQuery({ queryKey: ["consents"], queryFn: () => api<Consent[]>("/consents") });
-  const canRecord = consents.data?.find((c) => c.scope === "interview_recording")?.granted ?? false;
+  const granted = (scope: string) => consents.data?.find((c) => c.scope === scope)?.granted ?? false;
+  const canRecord = granted("interview_recording");
+  const canFace = granted("face_analysis");
 
   const start = useMutation({
     mutationFn: () => api<InterviewSession>("/interviews/sessions", { json: { company_type: companyType } }),
@@ -41,7 +44,7 @@ export default function Interview() {
   if (!session) {
     return (
       <>
-        <PageHeader title="Mock interview" lede="Four questions: HR, behavioural, technical and DSA. Answer out loud or type. You get scores for content, communication and delivery after each one." />
+        <PageHeader title="Mock interview" lede="Four questions: HR, behavioural, technical and DSA. Answer out loud or type. You get scores for content, communication, delivery and confidence after each one." />
         <Panel className="max-w-xl">
           <Field label="Company type">
             <select className="input" value={companyType} onChange={(e) => setCompanyType(e.target.value as "product" | "service")}>
@@ -51,6 +54,9 @@ export default function Interview() {
           </Field>
           <p className="mt-4 text-sm text-muted">
             {canRecord ? "Audio recording is on. We keep your recording until you delete your data." : "Audio recording is off, so you will type your answers. Turn on Interview audio on the Privacy page to speak instead."}
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            {canFace ? "Camera signals are on. Your video stays in this browser; we only receive eye-contact and framing numbers." : "Camera signals are off. Turn on Camera signals on the Privacy page to get eye-contact feedback."}
           </p>
           <button type="button" className="btn-primary mt-6" onClick={() => start.mutate()} disabled={start.isPending}>
             {start.isPending ? "Preparing" : "Start interview"}
@@ -67,7 +73,7 @@ export default function Interview() {
     <>
       <PageHeader title="Mock interview" lede={`Question ${index + 1} of ${session.questions.length}`} />
       <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
-        <AnswerBox key={q.id} sessionId={session.id} question={q} canRecord={canRecord}
+        <AnswerBox key={q.id} sessionId={session.id} question={q} canRecord={canRecord} canFace={canFace}
           result={results[q.id]} onScored={(a) => setResults({ ...results, [q.id]: a })} />
         <Panel title="Progress">
           <ol className="space-y-2">
@@ -93,10 +99,11 @@ export default function Interview() {
   );
 }
 
-function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
+function AnswerBox({ sessionId, question, canRecord, canFace, result, onScored }: {
   sessionId: number;
   question: InterviewSession["questions"][number];
   canRecord: boolean;
+  canFace: boolean;
   result?: InterviewAnswer;
   onScored: (a: InterviewAnswer) => void;
 }) {
@@ -106,9 +113,42 @@ function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
   const [micError, setMicError] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const recognition = useRef<Recognition | null>(null);
+  const video = useRef<HTMLVideoElement | null>(null);
+  const camStream = useRef<MediaStream | null>(null);
+  const stopFace = useRef<(() => FaceSignals) | null>(null);
+  const [face, setFace] = useState<FaceSignals | null>(null);
+  const [camOn, setCamOn] = useState(false);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+      camStream.current = stream;
+      setCamOn(true);
+      if (video.current) {
+        video.current.srcObject = stream;
+        await video.current.play();
+        stopFace.current = await trackFace(video.current);
+      }
+    } catch {
+      setMicError("Camera unavailable, so face signals are skipped for this answer.");
+    }
+  };
+  const stopCamera = () => {
+    if (stopFace.current) setFace(stopFace.current());
+    stopFace.current = null;
+    camStream.current?.getTracks().forEach((t) => t.stop());
+    camStream.current = null;
+    setCamOn(false);
+  };
 
   const startRec = async () => {
     setMicError(null);
+    setFace(null);
+    if (canFace) void startCamera();
+    if (!canRecord) {
+      setRecording(true);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: Blob[] = [];
@@ -138,6 +178,7 @@ function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
     }
   };
   const stopRec = () => {
+    stopCamera();
     recorder.current?.stop();
     recognition.current?.stop();
     setRecording(false);
@@ -149,6 +190,7 @@ function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
       form.append("question_id", String(question.id));
       form.append("transcript", transcript);
       if (audio) form.append("audio", audio, "answer.wav");
+      if (face) form.append("face_metrics", JSON.stringify(face));
       return api<InterviewAnswer>(`/interviews/sessions/${sessionId}/answers`, { form });
     },
     onSuccess: onScored,
@@ -159,15 +201,19 @@ function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
       <Panel eyebrow={question.category}>
         <p className="font-serif text-2xl leading-snug text-ink">{question.prompt}</p>
         <div className="mt-6 space-y-4">
-          {canRecord && (
-            <div className="flex flex-wrap items-center gap-3">
+          {(canRecord || canFace) && (
+            <div className="flex flex-wrap items-center gap-4">
               <button type="button" onClick={recording ? stopRec : startRec}
                 className={recording ? "btn-primary" : "btn-ghost"} aria-pressed={recording}>
                 <Icon name={recording ? "stop" : "mic"} size={16} />
-                {recording ? "Stop recording" : audio ? "Record again" : "Record answer"}
+                {recording ? "Stop" : audio || face ? "Answer again" : canRecord ? "Record answer" : "Start camera"}
               </button>
-              {recording && <span className="flex items-center gap-2 text-sm text-rose"><span className="h-2 w-2 animate-pulse rounded-full bg-rose" />Recording</span>}
-              {audio && !recording && <span className="text-sm text-muted">Recording ready</span>}
+              {recording && <span className="flex items-center gap-2 text-sm text-rose"><span className="h-2 w-2 animate-pulse rounded-full bg-rose" />{canRecord ? "Recording" : "Camera on"}</span>}
+              {!recording && (audio || face) && (
+                <span className="text-sm text-muted">{[audio && "Audio ready", face && ("Camera: " + face.frames + " frames read")].filter(Boolean).join(" · ")}</span>
+              )}
+              <video ref={video} muted playsInline aria-label="Your camera preview"
+                className={"h-24 w-32 -scale-x-100 rounded-xl border border-line object-cover " + (camOn ? "" : "hidden")} />
             </div>
           )}
           {micError && <p role="alert" className="text-sm text-rose">{micError}</p>}
@@ -185,10 +231,12 @@ function AnswerBox({ sessionId, question, canRecord, result, onScored }: {
 
       {result ? (
         <Panel title="Feedback" eyebrow={`Overall ${Math.round(result.scores.overall)}`}>
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Meter label="Content" value={result.scores.content} />
-            <Meter label="Communication" value={result.scores.communication} />
-            <Meter label="Delivery" value={result.scores.delivery} />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Meter label="Content" value={result.scores.content} hint="Key points covered and closeness to a model answer" />
+            <Meter label="Communication" value={result.scores.communication} hint="Length, structure and filler words" />
+            <Meter label="Delivery" value={result.scores.delivery} hint={result.scores.delivery === null ? "Needs a voice recording" : "Pace, pauses and pitch variation"} />
+            <Meter label="Confidence" value={result.scores.confidence}
+              hint={result.scores.details.face_analyzed ? "Hedging, plus camera framing and eye contact (indicative)" : "Hedging language"} />
           </div>
           <ul className="mt-6 space-y-2">
             {result.feedback.map((f) => (

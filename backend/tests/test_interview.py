@@ -6,7 +6,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 from app.ml.interview.audio import prosody
-from app.ml.interview.scoring import score_answer
+from app.ml.interview.scoring import FaceSignals, score_answer
 from tests.conftest import Headers
 
 REF = (
@@ -56,7 +56,8 @@ def test_good_answer_outscores_poor_answer() -> None:
     p, feedback = score_answer(poor, REF, KPS)
     assert g["content"] > p["content"] + 30
     assert g["communication"] > p["communication"]
-    assert g["delivery"] > p["delivery"]
+    assert g["confidence"] > p["confidence"]
+    assert g["delivery"] is None  # no audio, so delivery is not guessed
     assert any("filler" in f.lower() for f in feedback)
     assert any("hedging" in f.lower() for f in feedback)
 
@@ -85,7 +86,8 @@ def test_session_flow_end_to_end(client: TestClient, make_student: Callable[...,
     )
     assert r.status_code == 201, r.text
     body = r.json()
-    assert {"content", "communication", "delivery", "overall"} <= set(body["scores"])
+    assert {"content", "communication", "delivery", "confidence", "overall"} <= set(body["scores"])
+    assert body["scores"]["delivery"] is not None
     assert body["scores"]["details"]["audio_analyzed"] is True
     assert body["feedback"]
 
@@ -109,3 +111,50 @@ def test_audio_needs_recording_consent(
         data={"question_id": str(q["id"]), "transcript": "hello there"},
     )
     assert text_only.status_code == 201
+
+
+FACE_OK = {
+    "frames": 120,
+    "face_present_ratio": 0.97,
+    "eye_contact_ratio": 0.85,
+    "smile_mean": 0.2,
+    "head_motion": 0.04,
+}
+FACE_POOR = {
+    "frames": 120,
+    "face_present_ratio": 0.6,
+    "eye_contact_ratio": 0.3,
+    "smile_mean": 0.0,
+    "head_motion": 0.3,
+}
+
+
+def test_face_signals_move_confidence_with_feedback() -> None:
+    text = "First I would use two pointers. Then they meet if there is a cycle."
+    ok, _ = score_answer(text, REF, KPS, face=FaceSignals.parse(FACE_OK))
+    poor, notes = score_answer(text, REF, KPS, face=FaceSignals.parse(FACE_POOR))
+    assert ok["confidence"] - poor["confidence"] == 35
+    assert ok["content"] == poor["content"]  # face never changes content
+    assert any("camera" in n for n in notes)
+    short, notes = score_answer(text, REF, KPS, face=FaceSignals.parse({**FACE_POOR, "frames": 5}))
+    assert short["confidence"] == ok["confidence"]
+    assert any("too short" in n for n in notes)
+
+
+def test_face_metrics_need_consent(
+    client: TestClient, make_student: Callable[..., Headers]
+) -> None:
+    import json
+
+    h = make_student(consents=("analytics",))
+    session = client.post("/api/v1/interviews/sessions", headers=h, json={}).json()
+    q = session["questions"][0]["id"]
+    data = {"question_id": str(q), "transcript": "hello there", "face_metrics": json.dumps(FACE_OK)}
+    url = f"/api/v1/interviews/sessions/{session['id']}/answers"
+    assert client.post(url, headers=h, data=data).status_code == 403
+    client.put("/api/v1/consents", headers=h, json=[{"scope": "face_analysis", "granted": True}])
+    r = client.post(url, headers=h, data=data)
+    assert r.status_code == 201
+    assert r.json()["scores"]["details"]["face_analyzed"] is True
+    bad = client.post(url, headers=h, data={**data, "face_metrics": "{not json"})
+    assert bad.status_code == 422

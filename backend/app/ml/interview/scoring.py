@@ -1,9 +1,11 @@
-"""Answer scoring: content correctness, communication, confidence/delivery (each 0-100).
+"""Answer scoring: content, communication, delivery and confidence (each 0-100).
 
-All rules are transparent heuristics; every point lost produces a feedback line. Automated scores
-are not validated against human raters yet (see docs/EVALUATION.md)."""
+All rules are transparent heuristics; every point lost produces a feedback line. Delivery needs
+audio and is left unmeasured without it; confidence uses face signals only when the student sends
+them. Automated scores are not validated against human raters yet (see docs/EVALUATION.md)."""
 
 import re
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.ml.embeddings import get_embedder
@@ -49,11 +51,61 @@ def _clip(x: float) -> float:
     return round(max(0.0, min(100.0, x)), 1)
 
 
+OVERALL_WEIGHTS = {"content": 0.45, "communication": 0.25, "delivery": 0.15, "confidence": 0.15}
+
+
+@dataclass(frozen=True)
+class FaceSignals:
+    """Aggregates computed in the browser (MediaPipe Face Landmarker). Indicative only: webcam
+    angle, lighting and individual differences affect them, and they are not emotion detection."""
+
+    frames: int
+    face_present_ratio: float
+    eye_contact_ratio: float
+    smile_mean: float
+    head_motion: float
+
+    @classmethod
+    def parse(cls, raw: dict[str, Any]) -> "FaceSignals":
+        def ratio(key: str) -> float:
+            return max(0.0, min(1.0, float(raw[key])))
+
+        return cls(
+            frames=max(0, int(raw["frames"])),
+            face_present_ratio=ratio("face_present_ratio"),
+            eye_contact_ratio=ratio("eye_contact_ratio"),
+            smile_mean=ratio("smile_mean"),
+            head_motion=max(0.0, float(raw["head_motion"])),
+        )
+
+    def as_dict(self) -> dict[str, float]:
+        return {k: round(float(v), 3) for k, v in asdict(self).items()}
+
+
+def face_adjustment(face: FaceSignals) -> tuple[float, list[str]]:
+    if face.frames < 20:
+        return 0.0, ["Camera clip too short to read; face signals were ignored."]
+    delta, notes = 0.0, []
+    if face.face_present_ratio < 0.8:
+        delta -= 15
+        notes.append("Stay centred in the frame for the whole answer.")
+    if face.eye_contact_ratio < 0.6:
+        delta -= 15
+        notes.append("Look at the camera more often; it reads as eye contact.")
+    if face.head_motion > 0.15:
+        delta -= 5
+        notes.append("Keep your head steadier; frequent movement can look nervous.")
+    if face.smile_mean < 0.05:
+        notes.append("A relaxed expression helps; smile when you introduce yourself.")
+    return delta, notes
+
+
 def score_answer(
     transcript: str,
     reference: str,
     key_points: list[str],
     prosody: Prosody | None = None,
+    face: FaceSignals | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     text = transcript.lower().strip()
     words = re.findall(r"[a-z']+", text)
@@ -67,7 +119,7 @@ def score_answer(
     if key_points:
         sims = embedder.similarity(key_points, sentences)
         for i, kp in enumerate(key_points):
-            if kp.lower() in text or float(sims[i].max()) >= 0.3:
+            if kp.lower() in text or float(sims[i].max()) >= embedder.keypoint_threshold:
                 covered.append(kp)
     coverage = len(covered) / len(key_points) if key_points else 0.0
     ref_sim = float(embedder.similarity([text or " "], [reference])[0, 0]) if reference else 0.0
@@ -96,32 +148,49 @@ def score_answer(
         feedback.append(f"Cut filler words ({fillers} found, e.g. 'um', 'like', 'basically').")
     communication = _clip(comm)
 
-    # Delivery/confidence: hedging always; pace, pauses and pitch when audio is available.
+    # Delivery: pace, pauses and pitch. Only measurable from audio.
+    delivery: float | None = None
+    wpm = None
+    if prosody and prosody.duration_s > 3:
+        dlv = 100.0
+        wpm = round(n / (prosody.duration_s / 60), 1)
+        if wpm < 100:
+            dlv -= 25
+            feedback.append(f"Pace was {wpm} words/min; aim for roughly 120-160.")
+        elif wpm > 185:
+            dlv -= 25
+            feedback.append(f"Pace was {wpm} words/min; slow down slightly.")
+        if prosody.pause_ratio > 0.45:
+            dlv -= 25
+            feedback.append("Long silences; pause briefly to think, then keep going.")
+        if prosody.pitch_variability is not None and prosody.pitch_variability < 0.08:
+            dlv -= 15
+            feedback.append("Delivery sounded flat; vary your tone to stress key points.")
+        delivery = _clip(dlv)
+
+    # Confidence: hedging always; on-camera presence and eye contact when face signals exist.
     conf = 100.0 - min(30, hedges * 10)
     if hedges:
         feedback.append("State conclusions directly instead of hedging ('I think', 'maybe').")
-    wpm = None
-    if prosody and prosody.duration_s > 3:
-        wpm = round(n / (prosody.duration_s / 60), 1)
-        if wpm < 100:
-            conf -= 15
-            feedback.append(f"Pace was {wpm} words/min; aim for roughly 120-160.")
-        elif wpm > 185:
-            conf -= 15
-            feedback.append(f"Pace was {wpm} words/min; slow down slightly.")
-        if prosody.pause_ratio > 0.45:
-            conf -= 15
-            feedback.append("Long silences; pause briefly to think, then keep going.")
-        if prosody.pitch_variability is not None and prosody.pitch_variability < 0.08:
-            conf -= 10
-            feedback.append("Delivery sounded flat; vary your tone to stress key points.")
-    delivery = _clip(conf)
+    if face is not None:
+        conf_face, face_notes = face_adjustment(face)
+        conf += conf_face
+        feedback += face_notes
+    confidence = _clip(conf)
 
-    scores = {
+    parts = {
         "content": content,
         "communication": communication,
         "delivery": delivery,
-        "overall": round(0.5 * content + 0.3 * communication + 0.2 * delivery, 1),
+        "confidence": confidence,
+    }
+    measured = {k: v for k, v in parts.items() if v is not None}
+    total_w = sum(OVERALL_WEIGHTS[k] for k in measured)
+    overall = round(sum(OVERALL_WEIGHTS[k] * v for k, v in measured.items()) / total_w, 1)
+
+    scores = {
+        **parts,
+        "overall": overall,
         "details": {
             "words": n,
             "key_points_covered": covered,
@@ -136,6 +205,8 @@ def score_answer(
                 else None
             ),
             "audio_analyzed": prosody is not None,
+            "face_analyzed": face is not None,
+            "face": face.as_dict() if face is not None else None,
         },
     }
     if not feedback:

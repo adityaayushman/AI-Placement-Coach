@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
@@ -8,7 +9,7 @@ from app.db.models import InterviewAnswer, InterviewSession, QuestionBank
 from app.deps import DB, Student
 from app.ml.interview import stt
 from app.ml.interview.audio import prosody
-from app.ml.interview.scoring import score_answer
+from app.ml.interview.scoring import FaceSignals, score_answer
 from app.schemas.common import ORM, CompanyType
 from app.services.governance import log_event, require_consent
 from app.services.knowledge import observe
@@ -97,6 +98,7 @@ async def submit_answer(
     question_id: int = Form(),
     transcript: str = Form(default="", max_length=10000),
     audio: UploadFile | None = File(default=None),
+    face_metrics: str = Form(default="", max_length=2000),
 ) -> InterviewAnswer:
     session = db.get(InterviewSession, sid)
     if session is None or session.user_id != user.id:
@@ -122,8 +124,16 @@ async def submit_answer(
     if not transcript.strip():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "No transcript available")
 
+    face = None
+    if face_metrics.strip():
+        require_consent(db, user.id, "face_analysis")
+        try:
+            face = FaceSignals.parse(json.loads(face_metrics))
+        except (ValueError, KeyError, TypeError):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Bad face_metrics") from None
+
     scores, feedback = score_answer(
-        transcript, question.reference_answer, question.key_points, pros
+        transcript, question.reference_answer, question.key_points, pros, face
     )
     answer = InterviewAnswer(
         session_id=sid,

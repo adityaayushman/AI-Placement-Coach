@@ -12,6 +12,8 @@ CONSENT_VERSION = "2026-10"
 SCOPES = {
     "resume": "Store and analyse my resume.",
     "interview_recording": "Record and analyse my mock-interview audio.",
+    "face_analysis": "Read face position and eye contact from my camera during mock interviews. "
+    "Video stays in my browser; only summary numbers are sent.",
     "analytics": "Log my in-app activity to personalise recommendations.",
     "coordinator_visibility": "Let placement coordinators see my individual results.",
 }
