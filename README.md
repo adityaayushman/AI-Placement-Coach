@@ -76,4 +76,4 @@ CI (`.github/workflows/ci.yml`) runs the lint, type and test commands.
 | 8 | Evaluation and pilot harness | Done; human-rated interview and resume sets do not exist yet |
 | 9 | Hardening and release | Mostly done; malware scanning and a hashed lock file are open (see [docs/SECURITY.md](docs/SECURITY.md)) |
 
-Last local verification (2026-10-27): backend 44 tests pass, ruff clean; frontend lint, typecheck, 4 tests and build pass. mypy could not be installed locally (network), so type checks rely on CI. Docker Compose was not run locally (the Docker disk is on a full drive).
+Last verification (2026-10-27): GitHub Actions CI passing (ruff, mypy strict, 44 backend tests; frontend lint, typecheck, 4 tests, build). Docker Compose was not run locally (the Docker disk is on a full drive).
