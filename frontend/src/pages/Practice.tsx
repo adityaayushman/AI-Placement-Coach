@@ -12,7 +12,7 @@ export default function Practice() {
   return (
     <>
       <PageHeader title="Practice" lede="Short quizzes. Each answer updates your skill mastery and your plan." />
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
+      <div className="stagger grid gap-6 lg:grid-cols-[18rem_1fr]">
         <Panel title="Quizzes">
           {list.isPending ? <Loading /> : (
             <ul className="space-y-1">
@@ -57,7 +57,7 @@ function Quiz({ id }: { id: number }) {
 
   return (
     <Panel title={detail.data.title} eyebrow={result ? `Score ${result.score}%` : `${Object.keys(answers).length} of ${qs.length} answered`}>
-      <ol className="space-y-6">
+      <ol className="stagger space-y-6">
         {qs.map((q, i) => {
           const verdict = result?.correct[String(q.id)];
           return (

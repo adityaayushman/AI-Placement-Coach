@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
 import App from "./App";
 import { setTokens } from "./api/client";
@@ -33,6 +33,11 @@ function renderAt(path: string) {
     </QueryClientProvider>,
   );
 }
+
+// Warm the lazily loaded dashboard (and Recharts) once, so tests measure rendering, not import time.
+beforeAll(async () => {
+  await import("./pages/Dashboard");
+}, 60_000);
 
 beforeEach(() => setTokens(null));
 afterEach(() => vi.unstubAllGlobals());

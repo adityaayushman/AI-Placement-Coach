@@ -72,7 +72,7 @@ export default function Interview() {
   return (
     <>
       <PageHeader title="Mock interview" lede={`Question ${index + 1} of ${session.questions.length}`} />
-      <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
+      <div className="stagger grid gap-6 xl:grid-cols-[1fr_22rem]">
         <AnswerBox key={q.id} sessionId={session.id} question={q} canRecord={canRecord} canFace={canFace}
           result={results[q.id]} onScored={(a) => setResults({ ...results, [q.id]: a })} />
         <Panel title="Progress">

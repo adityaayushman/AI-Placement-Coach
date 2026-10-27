@@ -44,7 +44,7 @@ export default function Dashboard() {
     <>
       <PageHeader title="Your readiness" lede="One score, the parts behind it, and what to do next." />
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="stagger grid gap-6 xl:grid-cols-3">
         <Panel className="xl:col-span-1" eyebrow="Placement readiness"
           action={
             <button type="button" className="btn-ghost px-3" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
@@ -111,7 +111,7 @@ export default function Dashboard() {
 
         <Panel eyebrow="Drivers" title="What moved the prediction">
           {latest?.attributions.length ? (
-            <ul className="space-y-3">
+            <ul className="stagger space-y-3">
               {latest.attributions.slice(0, 6).map((a) => (
                 <li key={a.feature} className="flex items-center justify-between gap-4 text-sm">
                   <span className="text-ink">{a.label}</span>
@@ -131,7 +131,7 @@ export default function Dashboard() {
 
         <Panel className="xl:col-span-2" eyebrow="This week" title="Work on these next">
           {recs.isPending ? <Loading /> : recs.isError ? <ErrorNote error={recs.error} /> : recs.data.length ? (
-            <ul className="space-y-3">
+            <ul className="stagger space-y-3">
               {recs.data.map((r) => (
                 <li key={r.id} className="rounded-2xl border border-line bg-white/[0.03] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">

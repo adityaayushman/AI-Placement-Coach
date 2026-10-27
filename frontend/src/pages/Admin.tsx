@@ -37,7 +37,7 @@ export default function Admin() {
   return (
     <>
       <PageHeader title="Administration" />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="stagger grid gap-6 xl:grid-cols-2">
         <Panel title="Readiness models" action={<button type="button" className="btn-ghost" onClick={() => retrain.mutate()} disabled={retrain.isPending}>{retrain.isPending ? "Training" : "Retrain"}</button>}>
           {models.isPending ? <Loading /> : (
             <ul className="space-y-3 text-sm">

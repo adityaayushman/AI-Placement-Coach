@@ -32,7 +32,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   return (
     <main className="grid min-h-screen place-items-center px-4 py-12">
       <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
-        <section className="hidden lg:block">
+        <section className="stagger hidden lg:block">
           <p className="eyebrow">AI Placement Coach</p>
           <h1 className="mt-4 font-serif text-5xl leading-[1.08] tracking-tight">
             Know where you stand.
@@ -48,7 +48,7 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
           <PreviewButtons onPick={async (r) => { await preview(r); navigate(r === "student" ? "/" : `/${r}`); }} />
         </section>
 
-        <form onSubmit={submit} className="glass-strong mx-auto w-full max-w-md p-7 sm:p-9" noValidate>
+        <form onSubmit={submit} className="page-enter glass-strong mx-auto w-full max-w-md p-7 sm:p-9" noValidate>
           <h2 className="font-serif text-2xl">{mode === "login" ? "Sign in" : "Create your account"}</h2>
           <p className="mt-1 text-sm text-muted">
             {mode === "login" ? "Welcome back." : "Students sign up here. Staff accounts come from your admin."}

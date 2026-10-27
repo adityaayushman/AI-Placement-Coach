@@ -112,6 +112,177 @@
   }
 }
 
+/* ---------- Motion: calm, short, ease-out. Everything below is off under reduced motion. ---------- */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drift-a {
+  from {
+    transform: translate3d(-4%, -2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 4%, 0) scale(1.12);
+  }
+}
+
+@keyframes drift-b {
+  from {
+    transform: translate3d(5%, 3%, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-5%, -4%, 0) scale(0.96);
+  }
+}
+
+@keyframes sheen {
+  from {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+/* Slowly drifting light behind the glass, so blur has something to catch. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(70px);
+  will-change: transform;
+}
+body::before {
+  top: -12rem;
+  left: -10rem;
+  width: 38rem;
+  height: 38rem;
+  background: radial-gradient(circle, rgba(167, 123, 142, 0.38), transparent 65%);
+  animation: drift-a 26s ease-in-out infinite alternate;
+}
+body::after {
+  bottom: -14rem;
+  right: -12rem;
+  width: 42rem;
+  height: 42rem;
+  background: radial-gradient(circle, rgba(226, 176, 98, 0.2), transparent 65%);
+  animation: drift-b 32s ease-in-out infinite alternate;
+}
+
+@layer components {
+  .page-enter {
+    animation: rise 480ms var(--ease-out) both;
+  }
+  .fade-in {
+    animation: fade 600ms var(--ease-out) both;
+  }
+
+  /* Children cascade in one after another. */
+  .stagger > * {
+    animation: rise 560ms var(--ease-out) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 30ms; }
+  .stagger > *:nth-child(2) { animation-delay: 90ms; }
+  .stagger > *:nth-child(3) { animation-delay: 150ms; }
+  .stagger > *:nth-child(4) { animation-delay: 210ms; }
+  .stagger > *:nth-child(5) { animation-delay: 270ms; }
+  .stagger > *:nth-child(6) { animation-delay: 330ms; }
+  .stagger > *:nth-child(7) { animation-delay: 390ms; }
+  .stagger > *:nth-child(8) { animation-delay: 450ms; }
+  .stagger > *:nth-child(n + 9) { animation-delay: 500ms; }
+
+  .glass-hover {
+    transition:
+      transform 320ms var(--ease-out),
+      border-color 320ms var(--ease-out),
+      box-shadow 320ms var(--ease-out);
+  }
+  .glass-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(244, 228, 210, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 245, 235, 0.1),
+      0 28px 60px -28px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(226, 176, 98, 0.06);
+  }
+
+  /* Buttons: soft press, and a light sweep across the primary action. */
+  .btn {
+    transition:
+      transform 180ms var(--ease-out),
+      background-color 200ms var(--ease-out),
+      filter 200ms var(--ease-out),
+      box-shadow 200ms var(--ease-out);
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn-primary {
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 24px -12px rgba(226, 176, 98, 0.55);
+  }
+  .btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    transform: translateX(-120%) skewX(-18deg);
+    pointer-events: none;
+  }
+  .btn-primary:hover:not(:disabled)::after {
+    animation: sheen 900ms var(--ease-out);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 12px 30px -12px rgba(226, 176, 98, 0.7);
+  }
+
+  .meter-fill {
+    transition: width 900ms var(--ease-out);
+  }
+
+  .input {
+    transition:
+      border-color 200ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      background-color 200ms var(--ease-out);
+  }
+  .input:focus {
+    box-shadow: 0 0 0 4px rgba(226, 176, 98, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

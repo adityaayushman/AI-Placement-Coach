@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import type { Announcement, Cohort, StudentRow } from "../api/types";
 import Icon from "../components/Icon";
 import { Empty, ErrorNote, Field, Loading, PageHeader, Panel } from "../components/ui";
+import { useCountUp } from "../lib/motion";
 
 const COMPONENTS = ["predictor", "resume", "mastery", "interview", "consistency"];
 
@@ -56,17 +57,14 @@ export default function Coordinator() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-4">
+      <div className="stagger grid gap-6 xl:grid-cols-4">
         {[
           ["Students", c.students],
           ["With a score", c.scored],
           ["Mean score", c.mean_score ?? "No data"],
           ["Below 50", c.at_risk_count],
         ].map(([label, value]) => (
-          <div key={label} className="glass p-5">
-            <p className="eyebrow">{label}</p>
-            <p className="mt-2 font-serif text-4xl tabular-nums text-ink">{value}</p>
-          </div>
+          <Stat key={label} label={String(label)} value={value} />
         ))}
 
         <Panel title="Score distribution" className="xl:col-span-2">
@@ -194,5 +192,18 @@ function Announcements() {
         {list.data?.slice(0, 3).map((a) => <li key={a.id} className="text-sm"><p className="text-ink">{a.title}</p><p className="text-faint">{a.body}</p></li>)}
       </ul>
     </Panel>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  const n = useCountUp(typeof value === "number" ? value : null);
+  const decimals = typeof value === "number" && !Number.isInteger(value) ? 1 : 0;
+  return (
+    <div className="glass glass-hover p-5">
+      <p className="eyebrow">{label}</p>
+      <p className="mt-2 font-serif text-4xl tabular-nums text-ink">
+        {typeof value === "number" ? (n ?? 0).toFixed(decimals) : value}
+      </p>
+    </div>
   );
 }

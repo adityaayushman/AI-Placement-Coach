@@ -50,7 +50,7 @@ export default function Resume() {
         </Panel>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="stagger grid gap-6 xl:grid-cols-3">
         <Panel title="Upload" eyebrow="PDF, DOCX or TXT, up to 5 MB">
           <form onSubmit={submit} className="space-y-4">
             <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-white/[0.03] px-4 text-center transition-colors duration-200 hover:bg-white/[0.06]">
@@ -75,7 +75,7 @@ export default function Resume() {
           {latest.isPending ? <Loading /> : !analysis ? (
             <Empty title="No report yet">Upload a resume to see your checks.</Empty>
           ) : (
-            <div className="grid gap-6 md:grid-cols-[auto_1fr]">
+            <div className="stagger grid gap-6 md:grid-cols-[auto_1fr]">
               <div className="flex flex-col items-center">
                 <ScoreRing score={analysis.ats_score} size={140} />
                 <p className="mt-2 text-sm text-muted">ATS score</p>
@@ -103,7 +103,7 @@ export default function Resume() {
               ) : analysis.skill_gaps.length === 0 ? (
                 <Empty title="No gaps found">Your resume covers every required skill for this role.</Empty>
               ) : (
-                <ol className="space-y-3">
+                <ol className="stagger space-y-3">
                   {analysis.skill_gaps.map((g, i) => (
                     <li key={g.skill} className="flex gap-4 rounded-2xl border border-line bg-white/[0.03] p-4">
                       <span className="font-serif text-lg tabular-nums text-faint">{i + 1}</span>

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { previewRole } from "../api/preview";
 import { useAuth } from "../auth/AuthContext";
@@ -22,6 +22,7 @@ const NAV: Record<string, { to: string; label: string; icon: IconName }[]> = {
 
 export default function Shell() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const items = NAV[user?.role ?? "student"];
 
   return (
@@ -31,9 +32,9 @@ export default function Shell() {
         Skip to content
       </a>
       <div className="mx-auto flex max-w-7xl gap-6 px-4 py-4 sm:px-6 lg:py-6">
-        <aside className="glass sticky top-6 hidden h-[calc(100vh-3rem)] w-60 shrink-0 flex-col p-4 lg:flex">
+        <aside className="glass fade-in sticky top-6 hidden h-[calc(100vh-3rem)] w-60 shrink-0 flex-col p-4 lg:flex">
           <Brand />
-          <nav aria-label="Primary" className="mt-8 flex flex-col gap-1">
+          <nav aria-label="Primary" className="stagger mt-8 flex flex-col gap-1">
             {items.map((item) => <NavItem key={item.to} {...item} />)}
           </nav>
           <div className="mt-auto border-t border-line pt-4">
@@ -62,7 +63,10 @@ export default function Shell() {
             </p>
           )}
           <main id="main" className="pb-16">
-            <Outlet />
+            {/* Keyed by route so every navigation replays the entrance. */}
+            <div key={location.pathname} className="page-enter">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

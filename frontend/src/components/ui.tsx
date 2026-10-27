@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { useCountUp, useMounted } from "../lib/motion";
+
 export function Panel({
   title,
   eyebrow,
@@ -14,7 +16,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`glass p-5 sm:p-6 ${className}`}>
+    <section className={`glass glass-hover p-5 sm:p-6 ${className}`}>
       {(title || action) && (
         <header className="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -67,11 +69,13 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 }
 
 export function Meter({ label, value, hint }: { label: string; value: number | null; hint?: string }) {
+  const shown = useCountUp(value);
+  const mounted = useMounted();
   return (
     <div>
       <div className="flex items-baseline justify-between text-sm">
         <span className="text-ink">{label}</span>
-        <span className="tabular-nums text-muted">{value === null ? "No data" : Math.round(value)}</span>
+        <span className="tabular-nums text-muted">{shown === null ? "No data" : Math.round(shown)}</span>
       </div>
       <div
         className="mt-2 h-2 overflow-hidden rounded-full bg-white/5"
@@ -82,8 +86,8 @@ export function Meter({ label, value, hint }: { label: string; value: number | n
         aria-valuenow={value ?? undefined}
       >
         <div
-          className="h-full rounded-full bg-gradient-to-r from-mauve via-rose to-amber transition-[width] duration-300"
-          style={{ width: `${value ?? 0}%` }}
+          className="meter-fill h-full rounded-full bg-gradient-to-r from-mauve via-rose to-amber"
+          style={{ width: `${mounted ? (value ?? 0) : 0}%` }}
         />
       </div>
       {hint && <p className="mt-1 text-xs text-faint">{hint}</p>}
@@ -94,7 +98,9 @@ export function Meter({ label, value, hint }: { label: string; value: number | n
 export function ScoreRing({ score, size = 168 }: { score: number | null; size?: number }) {
   const r = size / 2 - 12;
   const c = 2 * Math.PI * r;
-  const pct = score === null ? 0 : Math.max(0, Math.min(100, score)) / 100;
+  const mounted = useMounted();
+  const shown = useCountUp(score, 1100);
+  const pct = score === null || !mounted ? 0 : Math.max(0, Math.min(100, score)) / 100;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
       aria-label={score === null ? "No readiness score yet" : `Readiness score ${Math.round(score)} out of 100`}>
@@ -117,11 +123,11 @@ export function ScoreRing({ score, size = 168 }: { score: number | null; size?: 
         strokeDasharray={c}
         strokeDashoffset={c * (1 - pct)}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ transition: "stroke-dashoffset 600ms ease" }}
+        style={{ transition: "stroke-dashoffset 1100ms cubic-bezier(0.22, 1, 0.36, 1)" }}
       />
       <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
         className="fill-[var(--ink)] font-serif" fontSize={size / 3.6}>
-        {score === null ? "–" : Math.round(score)}
+        {shown === null ? "–" : Math.round(shown)}
       </text>
     </svg>
   );

@@ -29,7 +29,7 @@ export default function Privacy() {
   return (
     <>
       <PageHeader title="Privacy and data" lede="You decide what we use. You can take a copy of everything or delete it." />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="stagger grid gap-6 xl:grid-cols-2">
         <Panel title="Permissions" className="xl:row-span-2">
           <ConsentList />
           <p className="mt-4 text-xs text-faint">Turning a permission off stops its use straight away. To remove data already stored, delete your account below.</p>

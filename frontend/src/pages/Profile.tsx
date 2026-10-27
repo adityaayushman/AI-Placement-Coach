@@ -42,7 +42,7 @@ export default function Profile() {
   return (
     <>
       <PageHeader title="Profile" lede="Your score updates each time you save or add an entry." />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="stagger grid gap-6 xl:grid-cols-2">
         <Panel title="Academics and target" className="xl:row-span-2">
           <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
             <Field label="Department">

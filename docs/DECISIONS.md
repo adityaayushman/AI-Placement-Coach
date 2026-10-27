@@ -49,3 +49,8 @@ The user asked to close the gaps against the one-page methodology poster.
 29. **Interview sub-scores now match the poster**: content, communication, delivery (audio only; left unmeasured rather than guessed when there is no audio) and confidence. Overall weights 0.45 / 0.25 / 0.15 / 0.15, renormalised over measured parts.
 30. **Academic records import**: students upload a term-wise CSV; staff upload an institutional ERP/LMS export keyed by email (`POST /admin/academics/import`). This stands in for live ERP sync, which needs institution-specific credentials. CGPA = mean term GPA; backlogs = latest term.
 31. **Skill-gap tracking gain** is measured by simulation (`app/ml/knowledge/simulate.py`): recommender vs random topic vs fixed syllabus on SYNTHETIC learners. The simulator shares the recommender's prerequisite graph and weights, so the gain shows the loop works as designed, not a real learning effect.
+
+## Polish and hardening (2026-10-27)
+
+32. **Upload virus scanning** via clamd (`services/scanning.py`), opt-in with `CLAMAV_HOST`, fail-closed when configured. Compose has an opt-in `clamav` service (`--profile scan`, about 1 GB RAM), so it is not on Render's free tier by default.
+33. **Motion** is CSS plus two small hooks (`lib/motion.ts`: count-up, mount flag), no animation library: page entrance keyed by route, staggered panels and lists, glass hover lift, button press and sheen, meters and score rings that grow, numbers that count up, and slowly drifting background light. Durations 180-1100 ms with one ease-out curve; everything is disabled under `prefers-reduced-motion`.
