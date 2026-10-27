@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Optional heavy backends; used only when the package is installed.
     use_sentence_transformers: bool = False
     use_faster_whisper: bool = False
+    use_dkt: bool = False
 
     admin_email: str = ""
     admin_password: str = ""

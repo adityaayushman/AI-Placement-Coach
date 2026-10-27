@@ -8,9 +8,6 @@ from app.ml.resume.parsing import detect_sections
 from app.ml.resume.skills import extract_skills
 from app.ml.resume.taxonomy import TAXONOMY, category_of, skill_weight
 
-# A JD skill counts as semantically covered when a resume section is this similar to the
-# skill's description terms (taxonomy name + aliases). Tuned on the fixture set in tests/.
-SEMANTIC_COVER_THRESHOLD = 0.35
 MATCH_SECTIONS = ["summary", "experience", "projects", "skills"]
 
 
@@ -66,7 +63,7 @@ def _match(
             covered += 1
             continue
         best = float(sem[i].max()) if sem is not None and sem.shape[1] else 0.0
-        if best >= SEMANTIC_COVER_THRESHOLD:
+        if best >= embedder.skill_cover_threshold:
             covered += 1
             continue
         gaps.append(

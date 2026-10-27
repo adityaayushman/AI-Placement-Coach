@@ -117,3 +117,65 @@ def test_coding_csv_import(client: TestClient, make_student: Callable[..., Heade
         files={"file": ("c.csv", b"foo,bar\n1,2\n", "text/csv")},
     )
     assert bad.status_code == 422
+
+
+def test_student_academics_import_updates_profile(
+    client: TestClient, make_student: Callable[..., Headers]
+) -> None:
+    h = make_student()
+    csv = b"term,gpa,backlogs\nSem 1,7.0,1\nSem 2,8.0,0\n"
+    r = client.post(
+        "/api/v1/me/academics/import", headers=h, files={"file": ("a.csv", csv, "text/csv")}
+    )
+    assert r.status_code == 201
+    profile = client.get("/api/v1/me/profile", headers=h).json()
+    assert profile["cgpa"] == 7.5
+    assert profile["backlogs"] == 0
+    # Re-importing a term replaces it instead of duplicating.
+    client.post(
+        "/api/v1/me/academics/import",
+        headers=h,
+        files={"file": ("a.csv", b"term,gpa\nSem 2,9.0\n", "text/csv")},
+    )
+    assert len(client.get("/api/v1/me/academics", headers=h).json()) == 2
+    assert client.get("/api/v1/me/profile", headers=h).json()["cgpa"] == 8.0
+    bad = client.post(
+        "/api/v1/me/academics/import",
+        headers=h,
+        files={"file": ("a.csv", b"term,gpa\nSem 1,11\n", "text/csv")},
+    )
+    assert bad.status_code == 422
+
+
+def test_institutional_import_by_staff(
+    client: TestClient, make_student: Callable[..., Headers], coordinator: Headers
+) -> None:
+    h = make_student()
+    email = client.get("/api/v1/auth/me", headers=h).json()["email"]
+    csv = f"email,term,gpa,backlogs\n{email},Sem 1,8.4,0\nghost@example.com,Sem 1,6.0,2\n".encode()
+    r = client.post(
+        "/api/v1/admin/academics/import",
+        headers=coordinator,
+        files={"file": ("erp.csv", csv, "text/csv")},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == {"students_updated": 1, "unknown_emails": ["ghost@example.com"]}
+    assert client.get("/api/v1/me/profile", headers=h).json()["cgpa"] == 8.4
+    assert (
+        client.post(
+            "/api/v1/admin/academics/import",
+            headers=h,
+            files={"file": ("erp.csv", csv, "text/csv")},
+        ).status_code
+        == 403
+    )
+
+
+def test_simulated_recommender_closes_more_gaps_than_baselines() -> None:
+    from app.ml.knowledge import simulate
+
+    skills = ["data structures", "algorithms", "dynamic programming", "system design", "dbms"]
+    results = simulate.run(skills, "product", sessions=20, learners=60)
+    rec, *baselines = results
+    assert all(rec.gap_closed > b.gap_closed for b in baselines)
+    assert simulate.gain(results, "random topic") > 0

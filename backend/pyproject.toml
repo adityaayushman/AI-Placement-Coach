@@ -25,6 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 # Heavier backends, used automatically when installed (see docs/DECISIONS.md).
 ml-heavy = [
+  "torch>=2.4",
   "sentence-transformers>=3",
   "faster-whisper>=1",
   "xgboost>=2",
@@ -59,7 +60,7 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = [
   "sklearn.*", "scipy.*", "joblib.*", "pandas.*", "rq.*", "pypdf.*", "pdfplumber.*",
-  "xgboost.*", "faster_whisper.*", "sentence_transformers.*",
+  "xgboost.*", "faster_whisper.*", "sentence_transformers.*", "torch.*",
 ]
 ignore_missing_imports = true
 

@@ -5,22 +5,43 @@ from collections import Counter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db.base import utcnow
 from app.db.models import (
+    AssessmentAttempt,
     LearningResource,
+    QuestionBank,
     Recommendation,
     ResumeAnalysis,
     SkillMastery,
     StudentProfile,
 )
-from app.ml.knowledge import bkt
+from app.ml.knowledge import bkt, dkt
 from app.ml.knowledge.recommender import rank
 from app.ml.resume.taxonomy import COMPANY_WEIGHTS, TAXONOMY, category_of
 
 
 def mastery_map(db: Session, user_id: int) -> dict[str, float]:
     rows = db.scalars(select(SkillMastery).where(SkillMastery.user_id == user_id))
-    return {r.skill: r.p_known for r in rows}
+    mastery = {r.skill: r.p_known for r in rows}
+    deep = dkt.mastery_from_history(answer_history(db, user_id)) if get_settings().use_dkt else None
+    if deep:
+        # DKT covers the skills it was trained on; BKT fills the rest.
+        mastery.update({s: p for s, p in deep.items() if s in mastery})
+    return mastery
+
+
+def answer_history(db: Session, user_id: int) -> list[tuple[str, bool]]:
+    """Quiz answers in order as (skill, correct), the input sequence for DKT."""
+    skills = dict(db.execute(select(QuestionBank.id, QuestionBank.skill)).tuples().all())
+    out: list[tuple[str, bool]] = []
+    for attempt in db.scalars(
+        select(AssessmentAttempt)
+        .where(AssessmentAttempt.user_id == user_id)
+        .order_by(AssessmentAttempt.id)
+    ):
+        out += [(skills.get(int(q), ""), ok) for q, ok in attempt.correct.items()]
+    return [(s, ok) for s, ok in out if s]
 
 
 def observe(db: Session, user_id: int, skill: str, correct: bool) -> float:

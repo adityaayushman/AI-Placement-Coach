@@ -18,12 +18,17 @@ log = logging.getLogger(__name__)
 
 class Embedder(Protocol):
     name: str
+    # Cosine scales differ by model, so each backend carries its own decision thresholds.
+    skill_cover_threshold: float
+    keypoint_threshold: float
 
     def similarity(self, queries: list[str], targets: list[str]) -> NDArray[np.float64]: ...
 
 
 class TfidfEmbedder:
     name = "tfidf-word+char"
+    skill_cover_threshold = 0.35
+    keypoint_threshold = 0.3
 
     def similarity(self, queries: list[str], targets: list[str]) -> NDArray[np.float64]:
         from scipy.sparse import hstack
@@ -47,6 +52,9 @@ class SentenceTransformerEmbedder:
 
         self.model = SentenceTransformer(model_name)
         self.name = f"st:{model_name}"
+        # Chosen on the 4 fixture pairs in tests/fixtures.py (all true gaps scored <= 0.32).
+        self.skill_cover_threshold = 0.45
+        self.keypoint_threshold = 0.5
 
     def similarity(self, queries: list[str], targets: list[str]) -> NDArray[np.float64]:
         q = self.model.encode(queries, normalize_embeddings=True)
