@@ -16,3 +16,6 @@ data/processed/*
 *.log
 .DS_Store
 *.egg-info/
+.vercel/
+
+.vercel
