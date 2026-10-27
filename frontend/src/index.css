@@ -1,36 +1,122 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Musk palette: espresso base, smoked mauve, dusty rose, sage and amber light. */
 :root {
-  --paper: #faf8f4;
-  --ink: #1d1b18;
-  --muted: #6b655c;
-  --line: #e6e1d8;
-  --accent: #2f5d50;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #141311;
-    --ink: #ece8e1;
-    --muted: #9a948a;
-    --line: #2a2723;
-    --accent: #8cc2b0;
-  }
+  --bg: #17120f;
+  --bg-2: #211915;
+  --ink: #f4ebe1;
+  --muted: #c9b9a8;
+  --faint: #9a8a7b;
+  --line: rgba(244, 228, 210, 0.14);
+  --glass: rgba(255, 240, 225, 0.065);
+  --glass-strong: rgba(255, 240, 225, 0.11);
+  --mauve: #a77b8e;
+  --rose: #d6a594;
+  --sage: #9fa77f;
+  --amber: #e2b062;
+  --danger: #e58a7a;
+  --ok: #a9b98a;
+  color-scheme: dark;
 }
 
 @layer base {
   html {
-    background: var(--paper);
+    background: var(--bg);
     color: var(--ink);
     font-family: Inter, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(60rem 40rem at 10% -10%, rgba(167, 123, 142, 0.35), transparent 60%),
+      radial-gradient(50rem 35rem at 95% 10%, rgba(226, 176, 98, 0.18), transparent 60%),
+      radial-gradient(45rem 40rem at 50% 110%, rgba(159, 167, 127, 0.22), transparent 60%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    background-attachment: fixed;
+  }
   :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--amber);
     outline-offset: 3px;
-    border-radius: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: rgba(226, 176, 98, 0.35);
+  }
+}
+
+@layer components {
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 245, 235, 0.08),
+      0 20px 50px -25px rgba(0, 0, 0, 0.6);
+  }
+  .glass-strong {
+    @apply glass;
+    background: var(--glass-strong);
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn;
+    background: linear-gradient(135deg, var(--amber), var(--rose));
+    color: #1d1511;
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+  .btn-ghost {
+    @apply btn;
+    border: 1px solid var(--line);
+    background: rgba(255, 240, 225, 0.04);
+    color: var(--ink);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(255, 240, 225, 0.1);
+  }
+  .input {
+    @apply min-h-[44px] w-full rounded-xl px-4 text-sm transition-colors duration-200;
+    background: rgba(20, 14, 11, 0.45);
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .input::placeholder {
+    color: var(--faint);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--amber);
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider;
+    color: var(--muted);
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs;
+    border: 1px solid var(--line);
+    background: rgba(255, 240, 225, 0.06);
+    color: var(--muted);
+  }
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-[0.18em];
+    color: var(--muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

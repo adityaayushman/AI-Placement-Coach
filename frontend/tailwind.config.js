@@ -4,11 +4,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: "var(--paper)",
         ink: "var(--ink)",
         muted: "var(--muted)",
+        faint: "var(--faint)",
         line: "var(--line)",
-        accent: "var(--accent)",
+        mauve: "var(--mauve)",
+        rose: "var(--rose)",
+        sage: "var(--sage)",
+        amber: "var(--amber)",
+        danger: "var(--danger)",
+        ok: "var(--ok)",
       },
       fontFamily: {
         serif: ['"Source Serif 4"', "Georgia", "serif"],

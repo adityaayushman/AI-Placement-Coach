@@ -20,15 +20,23 @@ from app.db.session import get_sessionmaker  # noqa: E402
 def main(path: str) -> None:
     human = pd.read_csv(path)
     with get_sessionmaker()() as db:
-        auto = {a.id: a.scores.get("overall") for a in db.query(InterviewAnswer)
-                .filter(InterviewAnswer.id.in_(human["answer_id"].tolist()))}
+        auto = {
+            a.id: a.scores.get("overall")
+            for a in db.query(InterviewAnswer).filter(
+                InterviewAnswer.id.in_(human["answer_id"].tolist())
+            )
+        }
     human["auto_overall"] = human["answer_id"].map(auto)
     paired = human.dropna()
     if len(paired) < 10:
-        sys.exit(f"Only {len(paired)} matched answers; need at least 10 for a meaningful r.")
+        sys.exit(
+            f"Only {len(paired)} matched answers; need at least 10 for a meaningful r."
+        )
     r, p = pearsonr(paired["human_overall"], paired["auto_overall"])
     rho, p2 = spearmanr(paired["human_overall"], paired["auto_overall"])
-    print(f"n={len(paired)}  Pearson r={r:.3f} (p={p:.3g})  Spearman rho={rho:.3f} (p={p2:.3g})")
+    print(
+        f"n={len(paired)}  Pearson r={r:.3f} (p={p:.3g})  Spearman rho={rho:.3f} (p={p2:.3g})"
+    )
 
 
 if __name__ == "__main__":
