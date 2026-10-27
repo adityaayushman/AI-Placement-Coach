@@ -13,6 +13,7 @@ from app.ml.resume.parsing import ParseError, detect_sections, extract_text
 from app.schemas.common import ORM
 from app.services.governance import log_event, require_consent
 from app.services.rescoring import request_rescore
+from app.services.scanning import ensure_clean
 from app.services.storage import get_storage
 
 router = APIRouter(tags=["resumes"])
@@ -58,6 +59,7 @@ async def read_upload(file: UploadFile, allowed: set[str]) -> tuple[str, bytes]:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File too large")
     if not data:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Empty file")
+    ensure_clean(data)
     return suffix, data
 
 

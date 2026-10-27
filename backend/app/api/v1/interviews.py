@@ -14,6 +14,7 @@ from app.schemas.common import ORM, CompanyType
 from app.services.governance import log_event, require_consent
 from app.services.knowledge import observe
 from app.services.rescoring import request_rescore
+from app.services.scanning import ensure_clean
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
@@ -118,6 +119,7 @@ async def submit_answer(
             pros = prosody(data)
         except (ValueError, EOFError) as exc:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+        ensure_clean(data)
         audio_path = get_storage().save(data, ".wav")
         if not transcript.strip():
             transcript = stt.transcribe(data) or ""

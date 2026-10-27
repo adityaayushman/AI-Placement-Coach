@@ -11,7 +11,7 @@
 | Security headers (nosniff, frame DENY, no-referrer) | Done | `core/middleware.py` |
 | Input validation with bounds on every field | Done | `schemas/common.py` |
 | Uploads: extension allowlist, size cap, magic bytes, DOCX zip-bomb guard, random server filenames, path-escape check | Done, tested | `api/v1/resumes.py`, `ml/resume/parsing.py`, `services/storage.py` |
-| Malware scanning of uploads | **Not done.** Files are never executed or served back. Put ClamAV in front of storage before a public pilot | |
+| Malware scanning of uploads | Done, opt-in: every resume and audio upload is streamed to clamd when `CLAMAV_HOST` is set; fails closed (503) if the scanner is down. Tested with a fake clamd and the EICAR test string | `services/scanning.py`, `tests/test_scanning.py` |
 | PII kept out of logs | Logs carry request id, route and numeric ids only | `core/logging.py` |
 | Consent enforced server-side | Done, tested (revoking blocks access) | `services/governance.py` |
 | Coordinator re-identification | Groups under 3 suppressed; individual reads audited | `api/v1/coordinator.py` |

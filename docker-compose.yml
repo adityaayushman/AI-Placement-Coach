@@ -45,6 +45,11 @@ services:
     depends_on: [api]
     ports: ["5173:80"]
 
+  clamav:
+    # Optional upload scanning: docker compose --profile scan up, then set CLAMAV_HOST=clamav.
+    image: clamav/clamav:1.4
+    profiles: [scan]
+
 volumes:
   pgdata:
   storage:

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     use_sentence_transformers: bool = False
     use_faster_whisper: bool = False
     use_dkt: bool = False
+    # Upload virus scanning via clamd; disabled when host is empty.
+    clamav_host: str = ""
+    clamav_port: int = 3310
 
     admin_email: str = ""
     admin_password: str = ""
