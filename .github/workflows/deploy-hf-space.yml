@@ -1,0 +1,24 @@
+name: deploy-hf-space
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "scripts/deploy_hf_space.py", ".github/workflows/deploy-hf-space.yml"]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    # Only runs once the repo has HF_SPACE configured (Settings > Secrets and variables > Actions).
+    if: vars.HF_SPACE != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q huggingface_hub
+      - name: Push backend to the Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: python scripts/deploy_hf_space.py

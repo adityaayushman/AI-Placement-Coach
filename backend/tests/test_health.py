@@ -26,7 +26,7 @@ def test_ready_ok_when_dependencies_up() -> None:
     ):
         r = client.get("/api/v1/ready")
     assert r.status_code == 200
-    assert r.json() == {"db": "ok", "redis": "ok"}
+    assert r.json() == {"db": "ok"}  # tests run with JOBS_INLINE, so Redis is not required
 
 
 def test_ready_503_when_dependency_down() -> None:
@@ -36,4 +36,17 @@ def test_ready_503_when_dependency_down() -> None:
     ):
         r = client.get("/api/v1/ready")
     assert r.status_code == 503
-    assert r.json() == {"db": "down", "redis": "ok"}
+    assert r.json() == {"db": "down"}
+
+
+def test_ready_checks_redis_when_a_worker_queue_is_used() -> None:
+    from types import SimpleNamespace
+
+    settings = SimpleNamespace(database_url="sqlite://", redis_url="redis://x", jobs_inline=False)
+    with (
+        patch("app.api.v1.health.get_settings", return_value=settings),
+        patch("app.api.v1.health._check_redis", return_value=False),
+    ):
+        r = client.get("/api/v1/ready")
+    assert r.status_code == 503
+    assert r.json() == {"db": "ok", "redis": "down"}

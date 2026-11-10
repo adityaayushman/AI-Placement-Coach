@@ -14,7 +14,8 @@ def health() -> dict[str, str]:
 
 def _check_db(url: str) -> bool:
     try:
-        engine = create_engine(url, connect_args={"connect_timeout": 2})
+        args = {"connect_timeout": 2} if url.startswith("postgresql") else {}
+        engine = create_engine(url, connect_args=args)
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         engine.dispose()
@@ -34,9 +35,11 @@ def _check_redis(url: str) -> bool:
 
 @router.get("/ready")
 def ready(response: Response) -> dict[str, str]:
-    """Readiness: DB and Redis reachable."""
+    """Readiness: DB reachable, and Redis too unless jobs run inline (no queue needed)."""
     s = get_settings()
-    checks = {"db": _check_db(s.database_url), "redis": _check_redis(s.redis_url)}
+    checks = {"db": _check_db(s.database_url)}
+    if not s.jobs_inline:
+        checks["redis"] = _check_redis(s.redis_url)
     if not all(checks.values()):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return {k: "ok" if v else "down" for k, v in checks.items()}
