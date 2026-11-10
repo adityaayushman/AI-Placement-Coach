@@ -14,6 +14,7 @@ const Practice = lazy(() => import("./pages/Practice"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Resume = lazy(() => import("./pages/Resume"));
+const Results = lazy(() => import("./pages/Results"));
 const Welcome = lazy(() => import("./pages/Welcome"));
 
 const HOME = { student: "/", coordinator: "/coordinator", admin: "/admin" } as const;
@@ -45,6 +46,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Public><AuthPage mode="login" /></Public>} />
       <Route path="/register" element={<Public><AuthPage mode="register" /></Public>} />
+      <Route path="/results" element={<Suspense fallback={<Loading />}><Results /></Suspense>} />
       <Route element={<Guard roles={["student", "coordinator", "admin"]}><Shell /></Guard>}>
         <Route path="/" element={<Guard roles={["student"]}><Dashboard /></Guard>} />
         <Route path="/welcome" element={<Guard roles={["student"]}><Welcome /></Guard>} />

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { Job } from "../api/types";
@@ -37,6 +38,9 @@ export default function Admin() {
   return (
     <>
       <PageHeader title="Administration" />
+      <Link to="/results" target="_blank" rel="noreferrer" className="mb-6 inline-flex items-center gap-1 text-sm text-amber hover:underline">
+        Open Results &amp; Analysis page ↗
+      </Link>
       <div className="stagger grid gap-6 xl:grid-cols-2">
         <Panel title="Readiness models" action={<button type="button" className="btn-ghost" onClick={() => retrain.mutate()} disabled={retrain.isPending}>{retrain.isPending ? "Training" : "Retrain"}</button>}>
           {models.isPending ? <Loading /> : (

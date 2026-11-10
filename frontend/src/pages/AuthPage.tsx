@@ -46,6 +46,9 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
             score, the reasons behind it, and a short list of what to work on this week.
           </p>
           <PreviewButtons onPick={async (r) => { await preview(r); navigate(r === "student" ? "/" : `/${r}`); }} />
+          <Link to="/results" className="mt-6 inline-flex items-center gap-1 text-sm text-amber hover:underline">
+            View results &amp; analysis
+          </Link>
         </section>
 
         <form onSubmit={submit} className="page-enter glass-strong mx-auto w-full max-w-md p-7 sm:p-9" noValidate>
