@@ -57,11 +57,22 @@ def main() -> None:
         print(f"Authenticated to Hugging Face as {whoami.get('name', '?')}")
 
     try:
-        api.create_repo(repo_id=space, repo_type="space", space_sdk="docker", exist_ok=True)
+        # space_hardware is explicit: omitting it has been reported to make the API treat the
+        # new Space as needing paid hardware (402 Payment Required) instead of defaulting to the
+        # free CPU tier. cpu-basic is that free tier.
+        api.create_repo(
+            repo_id=space,
+            repo_type="space",
+            space_sdk="docker",
+            space_hardware="cpu-basic",
+            exist_ok=True,
+        )
     except HfHubHTTPError as exc:
         fail(
             f"Could not create/access space {space!r}: {exc}. Check that HF_SPACE's username "
-            "matches the account that owns HF_TOKEN, and that the token has write access."
+            "matches the account that owns HF_TOKEN, that the token has write access, and that "
+            "the account has no pending payment-method requirement at "
+            "https://huggingface.co/settings/billing."
         )
 
     root = Path(__file__).resolve().parents[1] / "backend"
