@@ -56,6 +56,8 @@ def main() -> None:
     else:
         print(f"Authenticated to Hugging Face as {whoami.get('name', '?')}")
 
+    # The space may already exist (created manually via the web UI, which sidesteps an
+    # account-level 402 some new accounts hit when creating Spaces via the API).
     try:
         # space_hardware is explicit: omitting it has been reported to make the API treat the
         # new Space as needing paid hardware (402 Payment Required) instead of defaulting to the
