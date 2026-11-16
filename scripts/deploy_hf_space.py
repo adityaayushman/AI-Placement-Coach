@@ -25,17 +25,44 @@ https://github.com/adityaayushman/AI-Placement-Coach
 """
 
 
+def fail(message: str) -> None:
+    """Print a GitHub Actions error annotation (visible via the Checks API without admin rights
+    on the repo, unlike the run's raw logs) and exit non-zero."""
+    print(f"::error title=deploy-hf-space failed::{message}")
+    sys.exit(1)
+
+
 def main() -> None:
-    token = os.environ.get("HF_TOKEN")
-    space = os.environ.get("HF_SPACE")
+    # Defensive .strip(): a trailing newline or space pasted into a GitHub secret/variable is a
+    # common, otherwise-silent cause of "invalid token" / "repo not found" errors.
+    token = (os.environ.get("HF_TOKEN") or "").strip()
+    space = (os.environ.get("HF_SPACE") or "").strip()
     if not token or not space:
-        sys.exit("Set HF_TOKEN and HF_SPACE (e.g. 'username/ai-placement-coach-api').")
-    # Triggered via push once HF_TOKEN/HF_SPACE are configured in the repo settings.
+        fail("HF_TOKEN and/or HF_SPACE is not set (check repo Settings > Secrets and variables).")
+    if space.count("/") != 1:
+        fail(f"HF_SPACE should look like 'username/space-name', got {space!r}.")
 
     from huggingface_hub import HfApi
+    from huggingface_hub.utils import HfHubHTTPError
 
     api = HfApi(token=token)
-    api.create_repo(repo_id=space, repo_type="space", space_sdk="docker", exist_ok=True)
+    try:
+        whoami = api.whoami()
+    except HfHubHTTPError as exc:
+        fail(
+            f"HF_TOKEN was rejected by Hugging Face ({exc}). Create a new token with the "
+            "'Write' role at huggingface.co/settings/tokens and update the HF_TOKEN secret."
+        )
+    else:
+        print(f"Authenticated to Hugging Face as {whoami.get('name', '?')}")
+
+    try:
+        api.create_repo(repo_id=space, repo_type="space", space_sdk="docker", exist_ok=True)
+    except HfHubHTTPError as exc:
+        fail(
+            f"Could not create/access space {space!r}: {exc}. Check that HF_SPACE's username "
+            "matches the account that owns HF_TOKEN, and that the token has write access."
+        )
 
     root = Path(__file__).resolve().parents[1] / "backend"
     readme = root / "README_SPACE.md"
@@ -58,6 +85,8 @@ def main() -> None:
             repo_type="space",
             commit_message="Space metadata",
         )
+    except HfHubHTTPError as exc:
+        fail(f"Upload to the space failed: {exc}")
     finally:
         readme.unlink(missing_ok=True)
 
