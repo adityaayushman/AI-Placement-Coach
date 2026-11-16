@@ -30,16 +30,18 @@ from tests.fixtures import GAP_CASES  # noqa: E402
 def table(rows: list[dict[str, object]], cols: list[str]) -> str:
     out = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     out += [
-        "| "
-        + " | ".join("" if r.get(c) is None else str(r.get(c)) for c in cols)
-        + " |"
+        "| " + " | ".join("" if r.get(c) is None else str(r.get(c)) for c in cols) + " |"
         for r in rows
     ]
     return "\n".join(out)
 
 
-def readiness_section(csv: str | None) -> str:
-    if csv:
+def readiness_section(csv: str | None, heading: str = "## 1. Placement readiness predictor") -> str:
+    from app.ml.readiness import real_data
+
+    if csv and Path(csv).resolve() == real_data.DATA_PATH.resolve():
+        df, source = real_data.load(), f"**REAL** dataset `{real_data.REAL_DATASET_LABEL}`"
+    elif csv:
         df, source = pd.read_csv(csv), f"CSV `{Path(csv).name}`"
     else:
         df, source = (
@@ -62,14 +64,27 @@ def readiness_section(csv: str | None) -> str:
     fair = []
     for attr, rows in rep["fairness"].items():
         fair += [{"attribute": attr, **r} for r in rows]
-    caveat = (
-        "> These numbers are measured on synthetic data. The generator assumes practice "
-        "features matter more than marks, so the ablation result is built in and is **not "
-        "evidence** about real students. Re-run with `--csv` on a pseudonymised pilot export.\n"
-        if not csv
-        else ""
-    )
-    return f"""## 1. Placement readiness predictor
+    if not csv:
+        caveat = (
+            "> These numbers are measured on synthetic data. The generator assumes practice "
+            "features matter more than marks, so the ablation result is built in and is **not "
+            "evidence** about real students. Re-run with `--csv` on a pseudonymised pilot export.\n"
+        )
+    elif Path(csv).resolve() == real_data.DATA_PATH.resolve():
+        caveat = (
+            "> This is real, anonymised student placement data — not synthetic — but it "
+            'is third-party (CC0-1.0, from an unrelated "XYZ campus") and **not SRM KTR or any '
+            "institution of ours**; no public SRM KTR placement dataset could be found (see "
+            "docs/DATA_PLAN.md). Five of our thirteen features "
+            "(backlogs, project_complexity, problems_solved, resume_score, company_type_product) "
+            "are not recorded by this source and are held at a fixed constant "
+            "(see `scripts/prepare_real_dataset.py`), so they contribute ~0 signal here; this is "
+            "why the ablation gap is smaller than on the synthetic generator below. Fairness "
+            "slices are empty because this source has no demographic columns.\n"
+        )
+    else:
+        caveat = ""
+    return f"""{heading}
 
 Data: {source}. Train/test split 80/20 stratified, seed 42; positive rate {rep["positive_rate"]}.
 Data hash `{rep["data_hash"][:16]}`.
@@ -123,10 +138,7 @@ def skill_gap_section() -> str:
         tp = fp = fn = 0
         with patch("app.ml.resume.analyzer.get_embedder", return_value=emb):
             for resume, jd_idx, expected in GAP_CASES:
-                got = {
-                    g["skill"]
-                    for g in analyze(resume, SAMPLE_JDS[jd_idx])["skill_gaps"]
-                }
+                got = {g["skill"] for g in analyze(resume, SAMPLE_JDS[jd_idx])["skill_gaps"]}
                 tp += len(got & expected)
                 fp += len(got - expected)
                 fn += len(expected - got)
@@ -225,9 +237,7 @@ def tracking_gain_section() -> str:
     blocks = []
     for company in ("product", "service"):
         res = simulate.run(target_skills(company), company)
-        rows = [
-            {"policy": r.policy, "gap_closed": r.gap_closed, "std": r.std} for r in res
-        ]
+        rows = [{"policy": r.policy, "gap_closed": r.gap_closed, "std": r.std} for r in res]
         blocks.append(
             f"**{company.title()} companies** ({len(target_skills(company))} target skills): "
             f"gain vs random **{simulate.gain(res, 'random topic'):+.1%}**, vs fixed syllabus "
@@ -276,15 +286,33 @@ resume/JD pairs.
 
 
 def main() -> None:
+    from app.ml.readiness import real_data
+
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", help="pseudonymised CSV with readiness FEATURES + placed")
+    ap.add_argument(
+        "--csv",
+        help="pseudonymised CSV with readiness FEATURES + placed; "
+        "defaults to the bundled real (third-party) dataset",
+    )
     args = ap.parse_args()
+
+    # Default run: the bundled real dataset is primary; the synthetic generator runs too, as a
+    # labelled comparison, so the historical synthetic-only story isn't lost. An explicit --csv
+    # (e.g. a real pilot export later) replaces both with just that one source.
+    using_default = not args.csv
+    primary_csv = args.csv or str(real_data.DATA_PATH)
+    sections = [readiness_section(primary_csv)]
+    if using_default:
+        sections.append(
+            readiness_section(None, heading="### 1b. Synthetic generator (for comparison)")
+        )
+
     stamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     doc = "\n".join(
         [
             "# Evaluation\n",
             f"Generated by `scripts/evaluate.py` on {stamp}. Do not edit by hand.\n",
-            readiness_section(args.csv),
+            *sections,
             skill_gap_section(),
             kt_section(),
             tracking_gain_section(),
