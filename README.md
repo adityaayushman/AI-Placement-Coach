@@ -15,7 +15,7 @@ AI-driven platform that evaluates an engineering student's placement readiness a
 | Readiness score | Weighted blend of the five components, weights stored with each score, history and change since last time; new data triggers a rescore |
 | Governance | Per-scope consent with revocation, data export (JSON/CSV) and hard delete, audit log, coordinator aggregates with small-group suppression |
 
-Model training data is **synthetic** until pilot data exists. The UI and [docs/EVALUATION.md](docs/EVALUATION.md) say so wherever it matters.
+Model training data: by default the readiness predictor trains on a **real**, third-party, CC0-licensed dataset (10,000 rows; not SRM KTR or any institution of ours — no public SRM KTR placement dataset could be found, see [docs/DATA_PLAN.md](docs/DATA_PLAN.md)). A synthetic generator is kept as a fallback and as a labelled comparison. The UI and [docs/EVALUATION.md](docs/EVALUATION.md) always state the real source for every number.
 
 ## Architecture
 
@@ -69,7 +69,7 @@ CI (`.github/workflows/ci.yml`) runs the lint, type and test commands.
 | 1 | Auth, data model, consent | Done |
 | 2 | Resume pipeline | Done (TF-IDF default; BERT MiniLM opt-in, evaluated) |
 | 3 | Assessments and activity | Done |
-| 4 | Readiness predictor | Done on synthetic data; SHAP replaced by occlusion attribution |
+| 4 | Readiness predictor | Done on a real third-party dataset (CC0, not SRM) by default, synthetic as fallback/comparison; SHAP replaced by occlusion attribution |
 | 5 | Mock interview | Done, including in-browser facial signals; server STT optional |
 | 6 | Recommendation engine | Done (BKT served; DKT implemented, did not beat fitted BKT on synthetic data) |
 | 7 | Aggregator and dashboards | Done |

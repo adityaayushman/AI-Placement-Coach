@@ -29,14 +29,10 @@ def main(path: str) -> None:
     human["auto_overall"] = human["answer_id"].map(auto)
     paired = human.dropna()
     if len(paired) < 10:
-        sys.exit(
-            f"Only {len(paired)} matched answers; need at least 10 for a meaningful r."
-        )
+        sys.exit(f"Only {len(paired)} matched answers; need at least 10 for a meaningful r.")
     r, p = pearsonr(paired["human_overall"], paired["auto_overall"])
     rho, p2 = spearmanr(paired["human_overall"], paired["auto_overall"])
-    print(
-        f"n={len(paired)}  Pearson r={r:.3f} (p={p:.3g})  Spearman rho={rho:.3f} (p={p2:.3g})"
-    )
+    print(f"n={len(paired)}  Pearson r={r:.3f} (p={p:.3g})  Spearman rho={rho:.3f} (p={p2:.3g})")
 
 
 if __name__ == "__main__":

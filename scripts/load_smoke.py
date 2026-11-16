@@ -37,9 +37,7 @@ def main(base: str, total: int = 300, workers: int = 20) -> None:
         headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
 
     # One pooled client, as a browser or proxy would keep connections alive.
-    client = httpx.Client(
-        base_url=base, timeout=30, limits=httpx.Limits(max_connections=workers)
-    )
+    client = httpx.Client(base_url=base, timeout=30, limits=httpx.Limits(max_connections=workers))
 
     def hit(i: int) -> tuple[int, float]:
         start = time.perf_counter()
