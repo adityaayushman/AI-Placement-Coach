@@ -234,13 +234,27 @@ def load_active() -> dict[str, Any] | None:
 
 
 def ensure_model() -> dict[str, Any]:
-    """Load the active model; on a fresh install train one on SYNTHETIC data (labelled so)."""
+    """Load the active model; on a fresh install train one (labelled by its real source)."""
     art = load_active()
     if art is None:
+        settings = get_settings()
+        if settings.use_real_bootstrap:
+            from app.ml.readiness import real_data
+
+            if real_data.available():
+                log.warning("no readiness model found; training on the bundled real dataset")
+                save(train(real_data.load(), source=real_data.REAL_DATASET_LABEL)["artifact"])
+                art = load_active()
+                assert art is not None
+                return art
+            log.warning(
+                "USE_REAL_BOOTSTRAP is set but the real dataset is missing; using synthetic"
+            )
+
         from app.ml.readiness.synthetic import SYNTHETIC_LABEL, generate
 
         log.warning("no readiness model found; training on synthetic data")
-        df = generate(get_settings().synthetic_rows)
+        df = generate(settings.synthetic_rows)
         save(train(df, source=SYNTHETIC_LABEL)["artifact"])
         art = load_active()
         assert art is not None

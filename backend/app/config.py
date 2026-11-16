@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     use_sentence_transformers: bool = False
     use_faster_whisper: bool = False
     use_dkt: bool = False
+    # Bootstrap the readiness model from the bundled real (third-party, CC0) dataset
+    # instead of the synthetic generator. See app/ml/readiness/real_data.py.
+    use_real_bootstrap: bool = False
     # Upload virus scanning via clamd; disabled when host is empty.
     clamav_host: str = ""
     clamav_port: int = 3310
