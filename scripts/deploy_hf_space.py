@@ -30,6 +30,7 @@ def main() -> None:
     space = os.environ.get("HF_SPACE")
     if not token or not space:
         sys.exit("Set HF_TOKEN and HF_SPACE (e.g. 'username/ai-placement-coach-api').")
+    # Triggered via push once HF_TOKEN/HF_SPACE are configured in the repo settings.
 
     from huggingface_hub import HfApi
 
