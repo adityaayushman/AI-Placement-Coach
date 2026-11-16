@@ -2,17 +2,25 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { Empty } from "../components/ui";
+
 import {
   ABLATION,
+  ABLATION_SYNTHETIC,
   CALIBRATION,
   FAIRNESS,
+  FAIRNESS_SYNTHETIC,
   GENERATED_AT,
   HOLDOUT,
+  HOLDOUT_SYNTHETIC,
   KNOWLEDGE_TRACING,
   MODEL_COMPARISON,
+  MODEL_COMPARISON_SYNTHETIC,
+  REAL_DATASET_LABEL,
   RESUME_MATCH,
   TARGETS,
   TRACKING_GAIN,
+  UNRECORDED_REAL_FEATURES,
 } from "../data/evaluation";
 
 const tooltipStyle = {
@@ -81,10 +89,17 @@ export default function Results() {
       </header>
 
       <div className="stagger mx-auto grid max-w-5xl gap-6">
-        <Section title="1. Placement readiness predictor">
-          <p className="mb-4 text-sm text-muted">
-            Three models compared by 5-fold stratified cross-validation on an 80/20 synthetic split
-            (n=1500, positive rate 55%). Logistic regression won and was Platt-calibrated.
+        <Section title="1. Placement readiness predictor" synth="Real data · not SRM">
+          <p className="mb-2 text-sm text-muted">
+            Three models compared by 5-fold stratified cross-validation on an 80/20 split of a{" "}
+            <strong className="text-ink">real</strong>, third-party dataset ({REAL_DATASET_LABEL},
+            10,000 rows). Logistic regression won and was Platt-calibrated.
+          </p>
+          <p className="mb-4 rounded-xl border border-line bg-white/[0.03] p-3 text-xs text-faint">
+            No public SRM KTR placement dataset could be found (checked Kaggle, Hugging Face and
+            GitHub) &mdash; see docs/DATA_PLAN.md. This source does not record{" "}
+            {UNRECORDED_REAL_FEATURES.join(", ")}; those five features are held at a fixed constant
+            rather than guessed, so they carry ~0 signal below.
           </p>
           <Chart data={MODEL_COMPARISON} xKey="model" yKey="cv_roc_auc" />
           <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -100,22 +115,47 @@ export default function Results() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-faint">Hold-out performance, same synthetic split.</p>
+          <p className="mt-4 text-xs text-faint">Hold-out performance, same real-data split.</p>
         </Section>
 
-        <Section title="2. Ablation: marks alone vs full feature set">
+        <Section title="1b. Synthetic generator (comparison)" synth="Synthetic data">
           <p className="mb-4 text-sm text-muted">
-            Academics-only features (CGPA, backlogs, 10th/12th %) versus the full set (plus coding
-            activity, projects, resume score and mock-interview average), same model, same hold-out.
+            Kept alongside the real result above, exactly as docs/EVALUATION.md does, so the
+            earlier synthetic-only story isn&rsquo;t lost.
+          </p>
+          <Chart data={MODEL_COMPARISON_SYNTHETIC} xKey="model" yKey="cv_roc_auc" height={180} />
+          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              ["Accuracy", HOLDOUT_SYNTHETIC.accuracy],
+              ["F1", HOLDOUT_SYNTHETIC.f1],
+              ["ROC-AUC", HOLDOUT_SYNTHETIC.roc_auc],
+              ["Brier (lower better)", HOLDOUT_SYNTHETIC.brier],
+            ].map(([label, value]) => (
+              <div key={label as string} className="rounded-xl border border-line bg-white/[0.03] p-3 text-center">
+                <p className="font-serif text-xl text-ink">{((value as number) * 100).toFixed(1)}%</p>
+                <p className="mt-1 text-xs text-faint">{label}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="2. Ablation: marks alone vs full feature set" synth="Real data · not SRM">
+          <p className="mb-4 text-sm text-muted">
+            Academics-only features (CGPA, backlogs, 10th/12th %) versus the full set, same model,
+            same hold-out, on the real dataset. The gap is small here because five of the extra
+            features above are held constant &mdash; the real lift comes only from the aptitude
+            test and soft-skills columns this source actually records.
           </p>
           <Chart data={ABLATION} xKey="features" yKey="accuracy" />
           <p className="mt-3 text-sm text-ink">
-            +{Math.round((ABLATION[1].accuracy - ABLATION[0].accuracy) * 100)} accuracy points from
-            looking beyond marks &mdash; the core case for a multi-signal readiness score.
+            +{Math.round((ABLATION[1].accuracy - ABLATION[0].accuracy) * 100)} accuracy point(s)
+            beyond marks on real data, vs +
+            {Math.round((ABLATION_SYNTHETIC[1].accuracy - ABLATION_SYNTHETIC[0].accuracy) * 100)}{" "}
+            points on the synthetic generator (chip 1b), which assumes practice signals matter more.
           </p>
         </Section>
 
-        <Section title="3. Calibration &amp; fairness">
+        <Section title="3. Calibration &amp; fairness" synth="Real data · not SRM">
           <p className="mb-3 text-sm text-muted">Predicted probability vs observed outcome rate, by confidence bin.</p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[420px] text-sm">
@@ -132,12 +172,39 @@ export default function Results() {
               </tbody>
             </table>
           </div>
-          <p className="mb-3 mt-6 text-sm text-muted">Selection rate, true-positive rate and accuracy by department and gender (threshold 0.5).</p>
+          <p className="mb-3 mt-6 text-sm text-muted">Fairness by department and gender:</p>
+          {FAIRNESS.length === 0 ? (
+            <Empty title="No demographic columns in this dataset">
+              Fairness can&rsquo;t be checked on real data here. The synthetic generator&rsquo;s
+              fairness check (below) exists for exactly this reason &mdash; it has department and
+              gender fields.
+            </Empty>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-sm">
+                <thead><tr className="text-left text-faint"><th className="py-1.5 font-medium">Group</th><th className="py-1.5 font-medium">n</th><th className="py-1.5 font-medium">Selection</th><th className="py-1.5 font-medium">TPR</th><th className="py-1.5 font-medium">Accuracy</th></tr></thead>
+                <tbody>
+                  {FAIRNESS.map((f) => (
+                    <tr key={f.group} className="border-t border-line">
+                      <td className="py-1.5 text-ink">{f.group}</td>
+                      <td className="py-1.5 text-muted">{f.n}</td>
+                      <td className="py-1.5 tabular-nums text-muted">{(f.selection_rate * 100).toFixed(1)}%</td>
+                      <td className="py-1.5 tabular-nums text-muted">{(f.tpr * 100).toFixed(1)}%</td>
+                      <td className="py-1.5 tabular-nums text-ink">{(f.accuracy * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mb-3 mt-6 text-sm text-muted">
+            Synthetic generator&rsquo;s fairness (chip 1b, has department/gender):
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead><tr className="text-left text-faint"><th className="py-1.5 font-medium">Group</th><th className="py-1.5 font-medium">n</th><th className="py-1.5 font-medium">Selection</th><th className="py-1.5 font-medium">TPR</th><th className="py-1.5 font-medium">Accuracy</th></tr></thead>
               <tbody>
-                {FAIRNESS.map((f) => (
+                {FAIRNESS_SYNTHETIC.map((f) => (
                   <tr key={f.group} className="border-t border-line">
                     <td className="py-1.5 text-ink">{f.group}</td>
                     <td className="py-1.5 text-muted">{f.n}</td>
